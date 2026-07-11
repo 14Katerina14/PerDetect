@@ -19,6 +19,7 @@ struct DecisionContext {
     const domain::AccessPolicy& accessPolicy;
     bool isInsideZone{};
     bool hadActiveAlarm{};
+    bool isIdentityGracePeriodActive{};
 };
 
 }
