@@ -1,0 +1,16 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: securezone-mongodb
+    restart: unless-stopped
+    ports:
+      - "${MONGO_HOST_PORT:-27018}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:-securezone_admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:-securezone_pass}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-securezone}
+    volumes:
+      - securezone_mongo_data:/data/db
+
+volumes:
+  securezone_mongo_data:
