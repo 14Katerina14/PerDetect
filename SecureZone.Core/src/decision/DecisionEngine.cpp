@@ -62,15 +62,6 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
         );
     }
 
-    if (context.zone.status != domain::ZoneStatus::Active) {
-        return makeDecision(
-            domain::AccessDecisionType::Ignored,
-            "Zone is inactive.",
-            false,
-            false
-        );
-    }
-
     if (!context.isInsideZone) {
         return makeDecision(
             domain::AccessDecisionType::Allowed,
@@ -105,6 +96,15 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
             domain::AccessDecisionType::Violation,
             "Employee is inactive.",
             true,
+            false
+        );
+    }
+
+    if (context.zone.status != domain::ZoneStatus::Active) {
+        return makeDecision(
+            domain::AccessDecisionType::Allowed,
+            "Zone is inactive for access rules.",
+            false,
             false
         );
     }
