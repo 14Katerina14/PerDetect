@@ -11,6 +11,7 @@ services:
       MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-securezone}
     volumes:
       - securezone_mongo_data:/data/db
+      - ./init:/docker-entrypoint-initdb.d:ro
 
 volumes:
   securezone_mongo_data:
