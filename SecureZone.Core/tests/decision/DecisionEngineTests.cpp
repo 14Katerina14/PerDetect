@@ -8,6 +8,8 @@
 #include <utility>
 #include <vector>
 
+#include "securezone/decision/DecisionReasons.h"
+
 namespace {
 
 using namespace securezone;
@@ -100,6 +102,7 @@ void ignoresNonPersonDetections() {
     );
 
     assert(result.type == domain::AccessDecisionType::Ignored);
+    assert(result.reason == decision::DecisionReasons::NonPersonDetection);
     assert(!result.shouldCreateAlarm);
 }
 
@@ -116,6 +119,7 @@ void allowsPersonOutsideZoneAndClearsExistingAlarm() {
     const auto result = decision::DecisionEngine{}.evaluate(context);
 
     assert(result.type == domain::AccessDecisionType::Allowed);
+    assert(result.reason == decision::DecisionReasons::PersonOutsideZone);
     assert(!result.shouldCreateAlarm);
     assert(result.shouldClearAlarm);
 }
@@ -131,6 +135,7 @@ void returnsPendingIdentityWhileGracePeriodIsActive() {
     const auto result = decision::DecisionEngine{}.evaluate(context);
 
     assert(result.type == domain::AccessDecisionType::PendingIdentity);
+    assert(result.reason == decision::DecisionReasons::PendingIdentity);
     assert(!result.shouldCreateAlarm);
 }
 
@@ -144,6 +149,7 @@ void createsUnknownIdentityAlarmAfterGracePeriodExpires() {
     const auto result = decision::DecisionEngine{}.evaluate(context);
 
     assert(result.type == domain::AccessDecisionType::UnknownIdentity);
+    assert(result.reason == decision::DecisionReasons::UnknownIdentity);
     assert(result.shouldCreateAlarm);
 }
 
@@ -157,6 +163,7 @@ void createsUnknownIdentityAlarmInInactiveZoneAfterGracePeriodExpires() {
     const auto result = decision::DecisionEngine{}.evaluate(context);
 
     assert(result.type == domain::AccessDecisionType::UnknownIdentity);
+    assert(result.reason == decision::DecisionReasons::UnknownIdentity);
     assert(result.shouldCreateAlarm);
 }
 
@@ -172,6 +179,7 @@ void allowsIdentifiedEmployeeInInactiveZone() {
     );
 
     assert(result.type == domain::AccessDecisionType::Allowed);
+    assert(result.reason == decision::DecisionReasons::InactiveZoneAccessRules);
     assert(!result.shouldCreateAlarm);
 }
 
@@ -187,6 +195,7 @@ void allowsIdentifiedEmployeeInSafeZone() {
     );
 
     assert(result.type == domain::AccessDecisionType::Allowed);
+    assert(result.reason == decision::DecisionReasons::SafeZoneAccess);
     assert(!result.shouldCreateAlarm);
 }
 
@@ -202,6 +211,7 @@ void createsViolationForInactiveEmployee() {
     );
 
     assert(result.type == domain::AccessDecisionType::Violation);
+    assert(result.reason == decision::DecisionReasons::InactiveEmployee);
     assert(result.shouldCreateAlarm);
 }
 
@@ -217,6 +227,7 @@ void createsViolationForDeniedMachineState() {
     );
 
     assert(result.type == domain::AccessDecisionType::Violation);
+    assert(result.reason == decision::DecisionReasons::MachineStateDenied);
     assert(result.shouldCreateAlarm);
 }
 
@@ -232,6 +243,7 @@ void createsViolationForDeniedRole() {
     );
 
     assert(result.type == domain::AccessDecisionType::Violation);
+    assert(result.reason == decision::DecisionReasons::RoleDenied);
     assert(result.shouldCreateAlarm);
 }
 
@@ -247,6 +259,7 @@ void allowsEmployeeWithAllowedRoleAndMachineState() {
     );
 
     assert(result.type == domain::AccessDecisionType::Allowed);
+    assert(result.reason == decision::DecisionReasons::AccessAllowed);
     assert(!result.shouldCreateAlarm);
 }
 

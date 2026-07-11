@@ -4,6 +4,8 @@
 #include <string>
 #include <utility>
 
+#include "securezone/decision/DecisionReasons.h"
+
 namespace securezone::decision {
 
 namespace {
@@ -56,7 +58,7 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
     if (context.detection.objectClass != domain::ObjectClass::Person) {
         return makeDecision(
             domain::AccessDecisionType::Ignored,
-            "Detected object is not a person.",
+            DecisionReasons::NonPersonDetection,
             false,
             false
         );
@@ -65,7 +67,7 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
     if (!context.isInsideZone) {
         return makeDecision(
             domain::AccessDecisionType::Allowed,
-            "Person is outside the zone.",
+            DecisionReasons::PersonOutsideZone,
             false,
             context.hadActiveAlarm
         );
@@ -75,7 +77,7 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
         if (context.isIdentityGracePeriodActive) {
             return makeDecision(
                 domain::AccessDecisionType::PendingIdentity,
-                "Waiting for identity association.",
+                DecisionReasons::PendingIdentity,
                 false,
                 false
             );
@@ -83,7 +85,7 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
 
         return makeDecision(
             domain::AccessDecisionType::UnknownIdentity,
-            "Person identity is unknown.",
+            DecisionReasons::UnknownIdentity,
             true,
             false
         );
@@ -94,7 +96,7 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
     if (employee.status != domain::EmployeeStatus::Active) {
         return makeDecision(
             domain::AccessDecisionType::Violation,
-            "Employee is inactive.",
+            DecisionReasons::InactiveEmployee,
             true,
             false
         );
@@ -103,7 +105,7 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
     if (context.zone.status != domain::ZoneStatus::Active) {
         return makeDecision(
             domain::AccessDecisionType::Allowed,
-            "Zone is inactive for access rules.",
+            DecisionReasons::InactiveZoneAccessRules,
             false,
             false
         );
@@ -112,7 +114,7 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
     if (context.zone.type == domain::ZoneType::Safe) {
         return makeDecision(
             domain::AccessDecisionType::Allowed,
-            "Identified employee is inside a safe zone.",
+            DecisionReasons::SafeZoneAccess,
             false,
             false
         );
@@ -121,7 +123,7 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
     if (!hasAllowedMachineState(context.accessPolicy, context.machineState.status)) {
         return makeDecision(
             domain::AccessDecisionType::Violation,
-            "Machine state does not allow access.",
+            DecisionReasons::MachineStateDenied,
             true,
             false
         );
@@ -130,7 +132,7 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
     if (!hasAllowedRole(context.accessPolicy, employee)) {
         return makeDecision(
             domain::AccessDecisionType::Violation,
-            "Employee role is not allowed in this zone.",
+            DecisionReasons::RoleDenied,
             true,
             false
         );
@@ -138,7 +140,7 @@ domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) 
 
     return makeDecision(
         domain::AccessDecisionType::Allowed,
-        "Employee is allowed in this zone.",
+        DecisionReasons::AccessAllowed,
         false,
         false
     );
