@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+jobs:
+  checks:
+    name: Repository checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Secret scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ripgrep
+
+          pattern='(securezone[_-]?pass|Test123|MyUser|mongodb://[^[:space:]]+:[^[:space:]@]+@|XPCO|192\.168\.)'
+
+          if rg -n --hidden --glob '!.git/**' --glob '!.github/workflows/ci.yml' --glob '!*.example' "$pattern" .; then
+            echo "Potential secret or environment-specific value found. Replace it with an environment variable or placeholder."
+            exit 1
+          fi
+
+      - name: Validate MongoDB Docker Compose
+        shell: bash
+        env:
+          MONGO_HOST_PORT: "27018"
+          MONGO_INITDB_ROOT_USERNAME: "ci_user"
+          MONGO_INITDB_ROOT_PASSWORD: "ci_password"
+          MONGO_INITDB_DATABASE: "securezone"
+        run: |
+          set -euo pipefail
+          docker compose -f deployment/mongodb/docker-compose.yml config
+
+      - name: Configure CMake without external MongoDB dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B build -DSECUREZONE_BUILD_MONGODB_INFRA=OFF
+
+      - name: Build CMake placeholder target
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake --build build
