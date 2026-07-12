@@ -1,0 +1,22 @@
+find_package(bsoncxx CONFIG REQUIRED)
+find_package(mongocxx CONFIG REQUIRED)
+
+add_library(SecureZone.Infrastructure
+    src/mongodb/MongoDbClient.cpp
+    src/mongodb/MongoDbSettingsProvider.cpp
+)
+
+add_library(SecureZone::Infrastructure ALIAS SecureZone.Infrastructure)
+
+target_include_directories(SecureZone.Infrastructure
+    PUBLIC
+        include
+)
+
+target_link_libraries(SecureZone.Infrastructure
+    PUBLIC
+        mongo::bsoncxx_shared
+        mongo::mongocxx_shared
+)
+
+target_compile_features(SecureZone.Infrastructure PUBLIC cxx_std_20)
