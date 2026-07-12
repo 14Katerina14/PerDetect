@@ -8,8 +8,11 @@ add_library(SecureZone.Infrastructure
     src/mongodb/MongoDbSettingsProvider.cpp
     src/mongodb/repositories/MongoAccessPolicyRepository.cpp
     src/mongodb/repositories/MongoAlarmRepository.cpp
+    src/mongodb/repositories/MongoCameraTrackRepository.cpp
     src/mongodb/repositories/MongoEmployeeRepository.cpp
     src/mongodb/repositories/MongoMachineRepository.cpp
+    src/mongodb/repositories/MongoMetadataEventRepository.cpp
+    src/mongodb/repositories/MongoTrackIdentityBindingRepository.cpp
     src/mongodb/repositories/MongoZoneRepository.cpp
 )
 

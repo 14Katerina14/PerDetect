@@ -6,8 +6,11 @@ namespace {
 
 constexpr const char* AccessPoliciesCollection = "access_policies";
 constexpr const char* AlarmsCollection = "alarms";
+constexpr const char* CameraTracksCollection = "camera_tracks";
 constexpr const char* EmployeesCollection = "employees";
 constexpr const char* MachinesCollection = "machines";
+constexpr const char* MetadataEventsCollection = "metadata_events";
+constexpr const char* TrackIdentityBindingsCollection = "track_identity_bindings";
 constexpr const char* ZonesCollection = "zones";
 
 }
@@ -43,6 +46,24 @@ repositories::MongoAccessPolicyRepository MongoRepositoryProvider::accessPolicyR
 repositories::MongoAlarmRepository MongoRepositoryProvider::alarmRepository() {
     return repositories::MongoAlarmRepository{
         client_.database()[AlarmsCollection]
+    };
+}
+
+repositories::MongoCameraTrackRepository MongoRepositoryProvider::cameraTrackRepository() {
+    return repositories::MongoCameraTrackRepository{
+        client_.database()[CameraTracksCollection]
+    };
+}
+
+repositories::MongoMetadataEventRepository MongoRepositoryProvider::metadataEventRepository() {
+    return repositories::MongoMetadataEventRepository{
+        client_.database()[MetadataEventsCollection]
+    };
+}
+
+repositories::MongoTrackIdentityBindingRepository MongoRepositoryProvider::trackIdentityBindingRepository() {
+    return repositories::MongoTrackIdentityBindingRepository{
+        client_.database()[TrackIdentityBindingsCollection]
     };
 }
 
