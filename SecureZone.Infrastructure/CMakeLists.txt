@@ -4,6 +4,7 @@ find_package(mongocxx CONFIG REQUIRED)
 add_library(SecureZone.Infrastructure
     src/mongodb/MongoDbClient.cpp
     src/mongodb/MongoDocumentMappers.cpp
+    src/mongodb/MongoRepositoryProvider.cpp
     src/mongodb/MongoDbSettingsProvider.cpp
     src/mongodb/repositories/MongoAccessPolicyRepository.cpp
     src/mongodb/repositories/MongoAlarmRepository.cpp
