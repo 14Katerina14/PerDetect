@@ -3,6 +3,7 @@ find_package(mongocxx CONFIG REQUIRED)
 
 add_library(SecureZone.Infrastructure
     src/mongodb/MongoDbClient.cpp
+    src/mongodb/MongoDocumentMappers.cpp
     src/mongodb/MongoDbSettingsProvider.cpp
 )
 
@@ -11,6 +12,7 @@ add_library(SecureZone::Infrastructure ALIAS SecureZone.Infrastructure)
 target_include_directories(SecureZone.Infrastructure
     PUBLIC
         include
+        ../SecureZone.Core/include
 )
 
 target_link_libraries(SecureZone.Infrastructure
