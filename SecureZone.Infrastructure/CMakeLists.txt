@@ -5,6 +5,7 @@ add_library(SecureZone.Infrastructure
     src/mongodb/MongoDbClient.cpp
     src/mongodb/MongoDocumentMappers.cpp
     src/mongodb/MongoDbSettingsProvider.cpp
+    src/mongodb/repositories/MongoEmployeeRepository.cpp
 )
 
 add_library(SecureZone::Infrastructure ALIAS SecureZone.Infrastructure)
