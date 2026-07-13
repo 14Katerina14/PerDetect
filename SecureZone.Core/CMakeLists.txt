@@ -10,6 +10,7 @@ add_library(SecureZoneCore
     src/geometry/ZoneGeometryService.cpp
     src/identity/RolePermissionService.cpp
     src/identity/TrackAssociationService.cpp
+    src/machine/MachineStatusService.cpp
     src/metadata/MetadataApplicationService.cpp
     src/metadata/MetadataDecisionTriggerService.cpp
     src/metadata/MetadataIngestionService.cpp
@@ -28,6 +29,7 @@ set(SECUREZONE_CORE_TESTS
     AlarmLifecycleTests
     AlarmPersistenceTests
     RolePermissionTests
+    MachineStatusServiceTests
     MetadataApplicationServiceTests
     MetadataDecisionTriggerServiceTests
     MetadataIngestionServiceTests
