@@ -179,6 +179,20 @@ public:
         return machineState_;
     }
 
+    bool updateStatus(
+        const std::string& machineId,
+        domain::MachineStatus status,
+        std::chrono::system_clock::time_point updatedAt
+    ) override {
+        if (machineState_.machineId != machineId) {
+            return false;
+        }
+
+        machineState_.status = status;
+        machineState_.updatedAt = updatedAt;
+        return true;
+    }
+
 private:
     domain::MachineState machineState_;
 };
