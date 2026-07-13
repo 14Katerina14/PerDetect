@@ -7,6 +7,8 @@
 #include "securezone/infrastructure/mongodb/repositories/MongoEmployeeRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoMachineRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoMetadataEventRepository.h"
+#include "securezone/infrastructure/mongodb/repositories/MongoPresenceSessionRepository.h"
+#include "securezone/infrastructure/mongodb/repositories/MongoQrCheckinRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoTrackIdentityBindingRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoZoneRepository.h"
 
@@ -24,6 +26,8 @@ public:
     repositories::MongoCameraTrackRepository cameraTrackRepository();
     repositories::MongoMetadataEventRepository metadataEventRepository();
     repositories::MongoTrackIdentityBindingRepository trackIdentityBindingRepository();
+    repositories::MongoQrCheckinRepository qrCheckinRepository();
+    repositories::MongoPresenceSessionRepository presenceSessionRepository();
 
 private:
     MongoDbClient& client_;
