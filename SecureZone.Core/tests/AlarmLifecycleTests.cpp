@@ -1,0 +1,3 @@
+#include <cassert>
+#include "securezone/alarm/AlarmLifecycleService.h"
+int main() { using namespace securezone::domain; securezone::alarm::AlarmLifecycleService service; Alarm alarm; service.activate(alarm); assert(alarm.status == AlarmStatus::Active); service.acknowledge(alarm, "op"); assert(alarm.status == AlarmStatus::Acknowledged && alarm.acknowledgedBy == "op"); service.resolve(alarm); assert(alarm.status == AlarmStatus::Resolved && !alarm.stillInside); Alarm active; service.activate(active); service.resolve(active); assert(active.status == AlarmStatus::Resolved); }
