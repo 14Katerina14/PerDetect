@@ -10,6 +10,8 @@ constexpr const char* CameraTracksCollection = "camera_tracks";
 constexpr const char* EmployeesCollection = "employees";
 constexpr const char* MachinesCollection = "machines";
 constexpr const char* MetadataEventsCollection = "metadata_events";
+constexpr const char* PresenceSessionsCollection = "presence_sessions";
+constexpr const char* QrCheckinsCollection = "qr_checkins";
 constexpr const char* TrackIdentityBindingsCollection = "track_identity_bindings";
 constexpr const char* ZonesCollection = "zones";
 
@@ -64,6 +66,18 @@ repositories::MongoMetadataEventRepository MongoRepositoryProvider::metadataEven
 repositories::MongoTrackIdentityBindingRepository MongoRepositoryProvider::trackIdentityBindingRepository() {
     return repositories::MongoTrackIdentityBindingRepository{
         client_.database()[TrackIdentityBindingsCollection]
+    };
+}
+
+repositories::MongoQrCheckinRepository MongoRepositoryProvider::qrCheckinRepository() {
+    return repositories::MongoQrCheckinRepository{
+        client_.database()[QrCheckinsCollection]
+    };
+}
+
+repositories::MongoPresenceSessionRepository MongoRepositoryProvider::presenceSessionRepository() {
+    return repositories::MongoPresenceSessionRepository{
+        client_.database()[PresenceSessionsCollection]
     };
 }
 
