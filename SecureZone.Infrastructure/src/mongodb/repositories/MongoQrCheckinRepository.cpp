@@ -22,6 +22,15 @@ constexpr const char* EmployeeIdField = "employeeId";
 constexpr const char* StatusField = "status";
 constexpr const char* ZoneIdField = "zoneId";
 
+const char* qrCheckinStatusToString(domain::QrCheckInStatus status) {
+    switch (status) {
+        case domain::QrCheckInStatus::Active: return "active";
+        case domain::QrCheckInStatus::Expired: return "expired";
+        case domain::QrCheckInStatus::Revoked: return "revoked";
+    }
+    return "revoked";
+}
+
 bsoncxx::types::b_date toBsonDate(Clock::time_point timePoint) {
     return bsoncxx::types::b_date{
         std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -33,12 +42,13 @@ bsoncxx::types::b_date toBsonDate(Clock::time_point timePoint) {
 bsoncxx::document::value toQrCheckinDocument(const domain::QrCheckin& qrCheckin) {
     bsoncxx::builder::basic::document document;
     document.append(
-        bsoncxx::builder::basic::kvp(CheckinIdField, qrCheckin.checkinId),
+        bsoncxx::builder::basic::kvp(CheckinIdField, qrCheckin.checkInId),
         bsoncxx::builder::basic::kvp(EmployeeIdField, qrCheckin.employeeId),
         bsoncxx::builder::basic::kvp(ZoneIdField, qrCheckin.zoneId),
         bsoncxx::builder::basic::kvp("scannedAt", toBsonDate(qrCheckin.scannedAt)),
-        bsoncxx::builder::basic::kvp("expiresAt", toBsonDate(qrCheckin.expiresAt)),
-        bsoncxx::builder::basic::kvp(StatusField, qrCheckin.status)
+        bsoncxx::builder::basic::kvp("deviceId", qrCheckin.deviceId),
+        bsoncxx::builder::basic::kvp("expiresAt", toBsonDate(qrCheckin.validUntil)),
+        bsoncxx::builder::basic::kvp(StatusField, qrCheckinStatusToString(qrCheckin.status))
     );
 
     return document.extract();

@@ -9,7 +9,8 @@ add_library(SecureZoneCore
     src/decision/DecisionEngine.cpp
     src/geometry/ZoneGeometryService.cpp
     src/identity/RolePermissionService.cpp
-    src/identity/TrackAssociationService.cpp)
+    src/identity/TrackAssociationService.cpp
+    src/presence/PresenceSessionService.cpp)
 target_compile_features(SecureZoneCore PUBLIC cxx_std_17)
 target_include_directories(SecureZoneCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -20,10 +21,16 @@ set(SECUREZONE_CORE_TESTS
     AlarmLifecycleTests
     AlarmPersistenceTests
     RolePermissionTests
+    PresenceSessionServiceTests
 )
 
 foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
-    add_executable(${test_name} tests/${test_name}.cpp)
+    if(test_name STREQUAL "PresenceSessionServiceTests")
+        set(test_source tests/presence/PresenceSessionServiceTests.cpp)
+    else()
+        set(test_source tests/${test_name}.cpp)
+    endif()
+    add_executable(${test_name} ${test_source})
     target_link_libraries(${test_name} PRIVATE SecureZoneCore)
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()

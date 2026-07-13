@@ -37,7 +37,7 @@ securezone.presence_sessions.createIndex({ employeeId: 1 });
 securezone.presence_sessions.createIndex({ zoneId: 1 });
 securezone.presence_sessions.createIndex({ sourceCheckinId: 1 });
 securezone.presence_sessions.createIndex({ status: 1 });
-securezone.presence_sessions.createIndex({ validUntil: 1 });
+securezone.presence_sessions.createIndex({ expiresAt: 1 });
 
 securezone.access_policies.createIndex({ policyId: 1 }, { unique: true });
 securezone.access_policies.createIndex({ zoneId: 1 });

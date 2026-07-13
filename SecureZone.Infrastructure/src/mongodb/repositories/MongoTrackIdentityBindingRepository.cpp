@@ -20,6 +20,19 @@ constexpr const char* ConfirmedStatus = "confirmed";
 constexpr const char* StatusField = "status";
 constexpr const char* TrackIdField = "trackId";
 
+const char* bindingStatusToString(domain::BindingStatus status) {
+    switch (status) {
+        case domain::BindingStatus::Bound:
+            return ConfirmedStatus;
+        case domain::BindingStatus::Expired:
+            return "expired";
+        case domain::BindingStatus::Uncertain:
+            return "uncertain";
+    }
+
+    return "uncertain";
+}
+
 bsoncxx::types::b_date toBsonDate(Clock::time_point timePoint) {
     return bsoncxx::types::b_date{
         std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -39,7 +52,7 @@ bsoncxx::document::value toTrackIdentityBindingDocument(
         bsoncxx::builder::basic::kvp("presenceSessionId", binding.presenceSessionId),
         bsoncxx::builder::basic::kvp("confidence", binding.confidence),
         bsoncxx::builder::basic::kvp("boundAt", toBsonDate(binding.boundAt)),
-        bsoncxx::builder::basic::kvp(StatusField, binding.status)
+        bsoncxx::builder::basic::kvp(StatusField, bindingStatusToString(binding.status))
     );
 
     return document.extract();

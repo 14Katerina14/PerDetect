@@ -28,6 +28,7 @@ target_include_directories(SecureZone.Infrastructure
 
 target_link_libraries(SecureZone.Infrastructure
     PUBLIC
+        SecureZoneCore
         mongo::bsoncxx_shared
         mongo::mongocxx_shared
 )
