@@ -14,6 +14,12 @@ public:
     virtual std::optional<domain::MachineState> findByMachineId(
         const std::string& machineId
     ) const = 0;
+
+    virtual bool updateStatus(
+        const std::string& machineId,
+        domain::MachineStatus status,
+        std::chrono::system_clock::time_point updatedAt
+    ) = 0;
 };
 
 }
