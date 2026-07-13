@@ -4,8 +4,11 @@
 
 #include "securezone/domain/AccessPolicy.h"
 #include "securezone/domain/Alarm.h"
+#include "securezone/domain/CameraTrack.h"
 #include "securezone/domain/Employee.h"
 #include "securezone/domain/MachineState.h"
+#include "securezone/domain/MetadataEvent.h"
+#include "securezone/domain/TrackIdentityBinding.h"
 #include "securezone/domain/Zone.h"
 
 namespace securezone::infrastructure::mongodb {
@@ -15,5 +18,8 @@ domain::Zone mapZoneDocument(bsoncxx::document::view document);
 domain::MachineState mapMachineDocument(bsoncxx::document::view document);
 domain::AccessPolicy mapAccessPolicyDocument(bsoncxx::document::view document);
 domain::Alarm mapAlarmDocument(bsoncxx::document::view document);
+domain::CameraTrack mapCameraTrackDocument(bsoncxx::document::view document);
+domain::MetadataEvent mapMetadataEventDocument(bsoncxx::document::view document);
+domain::TrackIdentityBinding mapTrackIdentityBindingDocument(bsoncxx::document::view document);
 
 }
