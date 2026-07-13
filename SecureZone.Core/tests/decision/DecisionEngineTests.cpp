@@ -45,7 +45,6 @@ domain::Employee makeEmployee(
     domain::Employee employee{};
     employee.employeeId = "employee-1";
     employee.fullName = "Ivan Petrov";
-    employee.position = "Maintenance Technician";
     employee.roles = std::move(roles);
     employee.status = status;
     return employee;

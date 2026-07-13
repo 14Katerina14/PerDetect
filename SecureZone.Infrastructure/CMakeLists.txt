@@ -8,8 +8,13 @@ add_library(SecureZone.Infrastructure
     src/mongodb/MongoDbSettingsProvider.cpp
     src/mongodb/repositories/MongoAccessPolicyRepository.cpp
     src/mongodb/repositories/MongoAlarmRepository.cpp
+    src/mongodb/repositories/MongoCameraTrackRepository.cpp
     src/mongodb/repositories/MongoEmployeeRepository.cpp
     src/mongodb/repositories/MongoMachineRepository.cpp
+    src/mongodb/repositories/MongoMetadataEventRepository.cpp
+    src/mongodb/repositories/MongoPresenceSessionRepository.cpp
+    src/mongodb/repositories/MongoQrCheckinRepository.cpp
+    src/mongodb/repositories/MongoTrackIdentityBindingRepository.cpp
     src/mongodb/repositories/MongoZoneRepository.cpp
 )
 
@@ -23,6 +28,7 @@ target_include_directories(SecureZone.Infrastructure
 
 target_link_libraries(SecureZone.Infrastructure
     PUBLIC
+        SecureZoneCore
         mongo::bsoncxx_shared
         mongo::mongocxx_shared
 )
