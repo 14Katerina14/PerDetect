@@ -111,6 +111,18 @@ Clock::time_point optionalDate(
     return Clock::time_point{element.get_date().value};
 }
 
+Clock::time_point requiredDate(
+    bsoncxx::document::view document,
+    const char* fieldName
+) {
+    auto element = requiredElement(document, fieldName);
+    if (element.type() != bsoncxx::type::k_date) {
+        throw std::runtime_error(std::string{"Expected date MongoDB field: "} + fieldName);
+    }
+
+    return Clock::time_point{element.get_date().value};
+}
+
 std::vector<std::string> stringArray(
     bsoncxx::document::view document,
     const char* fieldName
@@ -232,6 +244,24 @@ std::vector<domain::Point> polygonFromDocument(
     return polygon;
 }
 
+domain::BoundingBox bboxFromDocument(
+    bsoncxx::document::view document,
+    const char* fieldName
+) {
+    auto element = requiredElement(document, fieldName);
+    if (element.type() != bsoncxx::type::k_document) {
+        throw std::runtime_error(std::string{"Expected document MongoDB field: "} + fieldName);
+    }
+
+    const auto bboxDocument = element.get_document().view();
+    domain::BoundingBox bbox{};
+    bbox.x = requiredNumber(bboxDocument, "x");
+    bbox.y = requiredNumber(bboxDocument, "y");
+    bbox.width = requiredNumber(bboxDocument, "width");
+    bbox.height = requiredNumber(bboxDocument, "height");
+    return bbox;
+}
+
 }
 
 domain::Employee mapEmployeeDocument(bsoncxx::document::view document) {
@@ -291,6 +321,46 @@ domain::Alarm mapAlarmDocument(bsoncxx::document::view document) {
     alarm.resolvedAt = optionalDate(document, "resolvedAt");
     alarm.message = optionalString(document, "message");
     return alarm;
+}
+
+domain::CameraTrack mapCameraTrackDocument(bsoncxx::document::view document) {
+    domain::CameraTrack cameraTrack{};
+    cameraTrack.trackId = requiredString(document, "trackId");
+    cameraTrack.cameraId = requiredString(document, "cameraId");
+    cameraTrack.firstSeenAt = requiredDate(document, "firstSeenAt");
+    cameraTrack.lastSeenAt = requiredDate(document, "lastSeenAt");
+    cameraTrack.currentZoneId = optionalString(document, "currentZoneId");
+    cameraTrack.objectClass = requiredString(document, "objectClass");
+    cameraTrack.bbox = bboxFromDocument(document, "bbox");
+    cameraTrack.status = requiredString(document, "status");
+    return cameraTrack;
+}
+
+domain::MetadataEvent mapMetadataEventDocument(bsoncxx::document::view document) {
+    domain::MetadataEvent metadataEvent{};
+    metadataEvent.eventId = requiredString(document, "eventId");
+    metadataEvent.cameraId = requiredString(document, "cameraId");
+    metadataEvent.trackId = requiredString(document, "trackId");
+    metadataEvent.timestamp = requiredDate(document, "timestamp");
+    metadataEvent.objectClass = requiredString(document, "objectClass");
+    metadataEvent.bbox = bboxFromDocument(document, "bbox");
+    metadataEvent.zoneId = optionalString(document, "zoneId");
+    metadataEvent.eventType = requiredString(document, "eventType");
+    return metadataEvent;
+}
+
+domain::TrackIdentityBinding mapTrackIdentityBindingDocument(
+    bsoncxx::document::view document
+) {
+    domain::TrackIdentityBinding binding{};
+    binding.bindingId = requiredString(document, "bindingId");
+    binding.trackId = requiredString(document, "trackId");
+    binding.employeeId = requiredString(document, "employeeId");
+    binding.presenceSessionId = requiredString(document, "presenceSessionId");
+    binding.confidence = requiredNumber(document, "confidence");
+    binding.boundAt = requiredDate(document, "boundAt");
+    binding.status = requiredString(document, "status");
+    return binding;
 }
 
 }
