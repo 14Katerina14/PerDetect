@@ -397,7 +397,6 @@ domain::QrCheckin mapQrCheckinDocument(bsoncxx::document::view document) {
     qrCheckin.checkInId = requiredString(document, "checkinId");
     qrCheckin.employeeId = requiredString(document, "employeeId");
     qrCheckin.zoneId = requiredString(document, "zoneId");
-    qrCheckin.deviceId = optionalString(document, "deviceId");
     qrCheckin.scannedAt = requiredDate(document, "scannedAt");
     qrCheckin.validUntil = requiredDate(document, "expiresAt");
     qrCheckin.status = qrCheckinStatusFromString(requiredString(document, "status"));

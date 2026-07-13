@@ -14,7 +14,6 @@ struct QrCheckIn {
     std::string checkInId;
     std::string employeeId;
     std::string zoneId;
-    std::string deviceId;
     QrCheckInStatus status{QrCheckInStatus::Active};
     std::chrono::system_clock::time_point scannedAt{};
     std::chrono::system_clock::time_point validUntil{};

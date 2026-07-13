@@ -3,7 +3,7 @@
 int main() {
     using namespace securezone::domain; using securezone::decision::AccessPolicyEvaluator;
     const AccessPolicy policy{"p", "z", {"operator"}, {MachineStatus::Stopped}}; const MachineState stopped{"m", MachineStatus::Stopped};
-    const Employee allowed{"e", "Name", "Operator", {"operator"}}; const Employee denied{"e", "Name", "Guest", {"guest"}};
+    const Employee allowed{"e", "Name", {"operator"}}; const Employee denied{"e", "Name", {"guest"}};
     AccessPolicyEvaluator evaluator;
     assert(evaluator.evaluate(allowed, stopped, policy).type == AccessDecisionType::Allowed);
     assert(evaluator.evaluate(denied, stopped, policy).type == AccessDecisionType::Violation);
