@@ -16,7 +16,8 @@ add_library(SecureZoneCore
     src/metadata/MetadataPersistenceService.cpp
     src/metadata/MetadataProcessingService.cpp
     src/metadata/OnvifMetadataParser.cpp
-    src/presence/PresenceSessionService.cpp)
+    src/presence/PresenceSessionService.cpp
+    src/webhook/WebhookNotificationService.cpp)
 target_compile_features(SecureZoneCore PUBLIC cxx_std_17)
 target_include_directories(SecureZoneCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -34,6 +35,7 @@ set(SECUREZONE_CORE_TESTS
     MetadataProcessingServiceTests
     OnvifMetadataParserTests
     PresenceSessionServiceTests
+    WebhookNotificationServiceTests
 )
 
 foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
