@@ -112,6 +112,14 @@ public:
 
         return std::nullopt;
     }
+
+    bool updateStatus(
+        const std::string&,
+        domain::MachineStatus,
+        std::chrono::system_clock::time_point
+    ) override {
+        return true;
+    }
 };
 
 class FakeAccessPolicyRepository final : public repository::IAccessPolicyRepository {
