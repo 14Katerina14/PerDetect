@@ -13,14 +13,24 @@ MetadataProcessingResult MetadataProcessingService::process(
     const std::string& cameraId,
     const std::string& rawMetadata
 ) {
+    return processDetailed(cameraId, rawMetadata).result;
+}
+
+MetadataProcessingOutcome MetadataProcessingService::processDetailed(
+    const std::string& cameraId,
+    const std::string& rawMetadata
+) {
     const auto ingestionResult = ingestionService_.ingest(cameraId, rawMetadata);
     const auto persistenceResult = persistenceService_.persist(ingestionResult);
 
-    return MetadataProcessingResult{
+    MetadataProcessingOutcome outcome{};
+    outcome.result = MetadataProcessingResult{
         ingestionResult.detections.size(),
         persistenceResult.tracksUpserted,
         persistenceResult.eventsCreated
     };
+    outcome.ingestionResult = ingestionResult;
+    return outcome;
 }
 
 }

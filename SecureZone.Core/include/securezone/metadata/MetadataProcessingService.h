@@ -4,6 +4,7 @@
 
 #include "securezone/metadata/MetadataIngestionService.h"
 #include "securezone/metadata/MetadataPersistenceService.h"
+#include "securezone/metadata/MetadataProcessingOutcome.h"
 #include "securezone/metadata/MetadataProcessingResult.h"
 
 namespace securezone::metadata {
@@ -16,6 +17,11 @@ public:
     );
 
     MetadataProcessingResult process(
+        const std::string& cameraId,
+        const std::string& rawMetadata
+    );
+
+    MetadataProcessingOutcome processDetailed(
         const std::string& cameraId,
         const std::string& rawMetadata
     );

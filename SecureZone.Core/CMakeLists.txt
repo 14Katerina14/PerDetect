@@ -10,6 +10,7 @@ add_library(SecureZoneCore
     src/geometry/ZoneGeometryService.cpp
     src/identity/RolePermissionService.cpp
     src/identity/TrackAssociationService.cpp
+    src/metadata/MetadataApplicationService.cpp
     src/metadata/MetadataDecisionTriggerService.cpp
     src/metadata/MetadataIngestionService.cpp
     src/metadata/MetadataPersistenceService.cpp
@@ -26,6 +27,7 @@ set(SECUREZONE_CORE_TESTS
     AlarmLifecycleTests
     AlarmPersistenceTests
     RolePermissionTests
+    MetadataApplicationServiceTests
     MetadataDecisionTriggerServiceTests
     MetadataIngestionServiceTests
     MetadataPersistenceServiceTests
@@ -37,6 +39,8 @@ set(SECUREZONE_CORE_TESTS
 foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
     if(test_name STREQUAL "PresenceSessionServiceTests")
         set(test_source tests/presence/PresenceSessionServiceTests.cpp)
+    elseif(test_name STREQUAL "MetadataApplicationServiceTests")
+        set(test_source tests/metadata/MetadataApplicationServiceTests.cpp)
     elseif(test_name STREQUAL "MetadataDecisionTriggerServiceTests")
         set(test_source tests/metadata/MetadataDecisionTriggerServiceTests.cpp)
     elseif(test_name STREQUAL "MetadataIngestionServiceTests")
