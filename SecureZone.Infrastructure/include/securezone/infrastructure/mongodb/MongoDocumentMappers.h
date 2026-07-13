@@ -8,6 +8,8 @@
 #include "securezone/domain/Employee.h"
 #include "securezone/domain/MachineState.h"
 #include "securezone/domain/MetadataEvent.h"
+#include "securezone/domain/PresenceSession.h"
+#include "securezone/domain/QrCheckin.h"
 #include "securezone/domain/TrackIdentityBinding.h"
 #include "securezone/domain/Zone.h"
 
@@ -21,5 +23,7 @@ domain::Alarm mapAlarmDocument(bsoncxx::document::view document);
 domain::CameraTrack mapCameraTrackDocument(bsoncxx::document::view document);
 domain::MetadataEvent mapMetadataEventDocument(bsoncxx::document::view document);
 domain::TrackIdentityBinding mapTrackIdentityBindingDocument(bsoncxx::document::view document);
+domain::QrCheckin mapQrCheckinDocument(bsoncxx::document::view document);
+domain::PresenceSession mapPresenceSessionDocument(bsoncxx::document::view document);
 
 }

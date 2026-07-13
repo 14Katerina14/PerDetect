@@ -363,4 +363,28 @@ domain::TrackIdentityBinding mapTrackIdentityBindingDocument(
     return binding;
 }
 
+domain::QrCheckin mapQrCheckinDocument(bsoncxx::document::view document) {
+    domain::QrCheckin qrCheckin{};
+    qrCheckin.checkinId = requiredString(document, "checkinId");
+    qrCheckin.employeeId = requiredString(document, "employeeId");
+    qrCheckin.zoneId = requiredString(document, "zoneId");
+    qrCheckin.scannedAt = requiredDate(document, "scannedAt");
+    qrCheckin.expiresAt = requiredDate(document, "expiresAt");
+    qrCheckin.status = requiredString(document, "status");
+    return qrCheckin;
+}
+
+domain::PresenceSession mapPresenceSessionDocument(bsoncxx::document::view document) {
+    domain::PresenceSession presenceSession{};
+    presenceSession.sessionId = requiredString(document, "sessionId");
+    presenceSession.employeeId = requiredString(document, "employeeId");
+    presenceSession.zoneId = requiredString(document, "zoneId");
+    presenceSession.sourceCheckinId = requiredString(document, "sourceCheckinId");
+    presenceSession.startedAt = requiredDate(document, "startedAt");
+    presenceSession.expiresAt = requiredDate(document, "expiresAt");
+    presenceSession.endedAt = optionalDate(document, "endedAt");
+    presenceSession.status = requiredString(document, "status");
+    return presenceSession;
+}
+
 }
