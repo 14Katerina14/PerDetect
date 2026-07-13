@@ -1,14 +1,22 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - "**"
   pull_request:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  checks:
-    name: Repository checks
+  secret-scan:
+    name: Secret scan
     runs-on: ubuntu-latest
 
     steps:
@@ -19,8 +27,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y ripgrep
+          if ! command -v rg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ripgrep
+          fi
 
           pattern='(securezone[_-]?pass|Test123|MyUser|mongodb://[^[:space:]]+:[^[:space:]@]+@|XPCO|192\.168\.)'
 
@@ -28,6 +38,14 @@ jobs:
             echo "Potential secret or environment-specific value found. Replace it with an environment variable or placeholder."
             exit 1
           fi
+
+  docker-compose:
+    name: Docker Compose validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Validate MongoDB Docker Compose
         shell: bash
@@ -40,14 +58,28 @@ jobs:
           set -euo pipefail
           docker compose -f deployment/mongodb/docker-compose.yml config
 
-      - name: Configure CMake without external MongoDB dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-          cmake -S . -B build -DSECUREZONE_BUILD_MONGODB_INFRA=OFF
+  backend-core:
+    name: Core build and tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
 
-      - name: Build CMake placeholder target
-        shell: bash
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake core build
         run: |
-          set -euo pipefail
-          cmake --build build
+          cmake -S . -B build -DSECUREZONE_BUILD_MONGODB_INFRA=OFF -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build core targets
+        run: |
+          cmake --build build --config Debug --parallel 2
+
+      - name: Run core tests
+        run: |
+          ctest --test-dir build -C Debug --output-on-failure
