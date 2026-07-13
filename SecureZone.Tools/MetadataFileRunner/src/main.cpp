@@ -42,6 +42,7 @@ using namespace securezone;
 struct RunnerOptions {
     std::string cameraId;
     std::string metadataFile;
+    std::string outputJsonFile;
     bool identityGracePeriodActive{};
 };
 
@@ -306,7 +307,8 @@ private:
 void printUsage() {
     std::cout
         << "Usage:\n"
-        << "  SecureZoneMetadataFileRunner --camera-id CAM-001 --metadata-file metadata.xml [--identity-grace-period]\n";
+        << "  SecureZoneMetadataFileRunner --camera-id CAM-001 --metadata-file metadata.xml "
+        << "[--identity-grace-period] [--output-json result.json]\n";
 }
 
 std::optional<RunnerOptions> parseArguments(int argc, char** argv) {
@@ -319,6 +321,8 @@ std::optional<RunnerOptions> parseArguments(int argc, char** argv) {
             options.cameraId = argv[++index];
         } else if (argument == "--metadata-file" && index + 1 < argc) {
             options.metadataFile = argv[++index];
+        } else if (argument == "--output-json" && index + 1 < argc) {
+            options.outputJsonFile = argv[++index];
         } else if (argument == "--identity-grace-period") {
             options.identityGracePeriodActive = true;
         } else if (argument == "--help" || argument == "-h") {
@@ -394,6 +398,154 @@ void printSection(const std::string& title) {
 
 void printMetric(const std::string& label, std::size_t value) {
     std::cout << label << ": " << value << '\n';
+}
+
+std::string jsonEscape(const std::string& value) {
+    std::ostringstream escaped;
+    for (const char character : value) {
+        switch (character) {
+        case '"':
+            escaped << "\\\"";
+            break;
+        case '\\':
+            escaped << "\\\\";
+            break;
+        case '\b':
+            escaped << "\\b";
+            break;
+        case '\f':
+            escaped << "\\f";
+            break;
+        case '\n':
+            escaped << "\\n";
+            break;
+        case '\r':
+            escaped << "\\r";
+            break;
+        case '\t':
+            escaped << "\\t";
+            break;
+        default:
+            escaped << character;
+            break;
+        }
+    }
+
+    return escaped.str();
+}
+
+std::string alarmStatusToString(domain::AlarmStatus status) {
+    switch (status) {
+    case domain::AlarmStatus::Created:
+        return "created";
+    case domain::AlarmStatus::Active:
+        return "active";
+    case domain::AlarmStatus::Acknowledged:
+        return "acknowledged";
+    case domain::AlarmStatus::Resolved:
+        return "resolved";
+    }
+
+    return "unknown";
+}
+
+void writeJsonString(
+    std::ostream& output,
+    const std::string& key,
+    const std::string& value,
+    bool trailingComma = true
+) {
+    output
+        << "    \"" << key << "\": "
+        << "\"" << jsonEscape(value) << "\"";
+    if (trailingComma) {
+        output << ',';
+    }
+    output << '\n';
+}
+
+void writeJsonMetric(
+    std::ostream& output,
+    const std::string& key,
+    std::size_t value,
+    bool trailingComma = true
+) {
+    output << "    \"" << key << "\": " << value;
+    if (trailingComma) {
+        output << ',';
+    }
+    output << '\n';
+}
+
+void writeJsonOutput(
+    const RunnerOptions& options,
+    const metadata::MetadataApplicationResult& result,
+    const InMemoryAlarmRepository& alarmRepository,
+    const InMemoryCameraTrackRepository& cameraTrackRepository,
+    const InMemoryMetadataEventRepository& metadataEventRepository
+) {
+    if (options.outputJsonFile.empty()) {
+        return;
+    }
+
+    std::ofstream output{options.outputJsonFile, std::ios::out | std::ios::trunc};
+    if (!output) {
+        throw std::runtime_error{"Could not write JSON output file: " + options.outputJsonFile};
+    }
+
+    output << "{\n";
+    writeJsonString(output, "cameraId", options.cameraId);
+    writeJsonString(output, "metadataFile", options.metadataFile);
+    output
+        << "  \"identityGracePeriodActive\": "
+        << (options.identityGracePeriodActive ? "true" : "false") << ",\n";
+
+    output << "  \"processing\": {\n";
+    writeJsonMetric(output, "detectionsProcessed", result.processing.detectionsProcessed);
+    writeJsonMetric(output, "tracksUpserted", result.processing.tracksUpserted);
+    writeJsonMetric(output, "eventsCreated", result.processing.eventsCreated, false);
+    output << "  },\n";
+
+    output << "  \"decision\": {\n";
+    writeJsonMetric(output, "detectionsChecked", result.decisions.detectionsChecked);
+    writeJsonMetric(output, "decisionsEvaluated", result.decisions.decisionsEvaluated);
+    writeJsonMetric(output, "allowed", result.decisions.allowed);
+    writeJsonMetric(output, "pendingIdentity", result.decisions.pendingIdentity);
+    writeJsonMetric(output, "violations", result.decisions.violations);
+    writeJsonMetric(output, "ignored", result.decisions.ignored);
+    writeJsonMetric(output, "alarmsCreated", result.decisions.alarmsCreated);
+    writeJsonMetric(output, "alarmsResolved", result.decisions.alarmsResolved, false);
+    output << "  },\n";
+
+    output << "  \"storage\": {\n";
+    writeJsonMetric(output, "storedTracks", cameraTrackRepository.size());
+    writeJsonMetric(output, "storedMetadataEvents", metadataEventRepository.size(), false);
+    output << "  },\n";
+
+    output << "  \"alarms\": [\n";
+    const auto& alarms = alarmRepository.alarms();
+    for (std::size_t index = 0; index < alarms.size(); ++index) {
+        const auto& alarm = alarms[index];
+        output << "    {\n";
+        output << "      \"alarmId\": \"" << jsonEscape(alarm.alarmId) << "\",\n";
+        output << "      \"trackId\": \"" << jsonEscape(alarm.trackId) << "\",\n";
+        output << "      \"zoneId\": \"" << jsonEscape(alarm.zoneId) << "\",\n";
+        output << "      \"employeeId\": \"" << jsonEscape(alarm.employeeId) << "\",\n";
+        output << "      \"machineId\": \"" << jsonEscape(alarm.machineId) << "\",\n";
+        output << "      \"status\": \"" << alarmStatusToString(alarm.status) << "\",\n";
+        output << "      \"reason\": \"" << jsonEscape(alarm.reason) << "\",\n";
+        output << "      \"message\": \"" << jsonEscape(alarm.message) << "\",\n";
+        output << "      \"stillInside\": " << (alarm.stillInside ? "true" : "false") << '\n';
+        output << "    }";
+        if (index + 1 < alarms.size()) {
+            output << ',';
+        }
+        output << '\n';
+    }
+    output << "  ]\n";
+    output << "}\n";
+
+    std::cout << "\nJSON output written: " << options.outputJsonFile << '\n';
 }
 
 void printResult(
@@ -503,6 +655,13 @@ int run(const RunnerOptions& options) {
     );
 
     printResult(options, result, alarmRepository, cameraTrackRepository, metadataEventRepository);
+    writeJsonOutput(
+        options,
+        result,
+        alarmRepository,
+        cameraTrackRepository,
+        metadataEventRepository
+    );
     return 0;
 }
 
