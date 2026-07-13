@@ -13,9 +13,12 @@ namespace securezone::presence {
 enum class PresenceSessionStartStatus {
     Started,
     Extended,
+    AlreadyActive,
+    InvalidRequest,
     EmployeeNotFound,
     EmployeeInactive,
-    ZoneNotFound
+    ZoneNotFound,
+    ZoneInactive
 };
 
 struct PresenceSessionStartRequest {

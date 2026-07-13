@@ -9,7 +9,7 @@
 #include "securezone/domain/MachineState.h"
 #include "securezone/domain/MetadataEvent.h"
 #include "securezone/domain/PresenceSession.h"
-#include "securezone/domain/QrCheckin.h"
+#include "securezone/domain/QrCheckIn.h"
 #include "securezone/domain/TrackIdentityBinding.h"
 #include "securezone/domain/Zone.h"
 

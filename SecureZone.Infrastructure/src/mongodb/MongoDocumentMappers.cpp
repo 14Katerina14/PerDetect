@@ -204,6 +204,30 @@ domain::AlarmStatus alarmStatusFromString(const std::string& value) {
     return domain::AlarmStatus::Active;
 }
 
+domain::BindingStatus bindingStatusFromString(const std::string& value) {
+    if (value == "confirmed" || value == "bound") {
+        return domain::BindingStatus::Bound;
+    }
+
+    if (value == "expired") {
+        return domain::BindingStatus::Expired;
+    }
+
+    return domain::BindingStatus::Uncertain;
+}
+
+domain::QrCheckInStatus qrCheckinStatusFromString(const std::string& value) {
+    if (value == "active") return domain::QrCheckInStatus::Active;
+    if (value == "expired") return domain::QrCheckInStatus::Expired;
+    return domain::QrCheckInStatus::Revoked;
+}
+
+domain::PresenceSessionStatus presenceSessionStatusFromString(const std::string& value) {
+    if (value == "active") return domain::PresenceSessionStatus::Active;
+    if (value == "ended") return domain::PresenceSessionStatus::Ended;
+    return domain::PresenceSessionStatus::Expired;
+}
+
 std::vector<domain::MachineStatus> machineStatusArray(
     bsoncxx::document::view document,
     const char* fieldName
@@ -318,7 +342,12 @@ domain::Alarm mapAlarmDocument(bsoncxx::document::view document) {
     alarm.exitedAt = optionalDate(document, "exitedAt");
     alarm.stillInside = optionalBool(document, "stillInside");
     alarm.acknowledgedBy = optionalString(document, "acknowledgedBy");
-    alarm.resolvedAt = optionalDate(document, "resolvedAt");
+    if (auto resolvedAt = document["resolvedAt"]; resolvedAt && resolvedAt.type() != bsoncxx::type::k_null) {
+        if (resolvedAt.type() != bsoncxx::type::k_date) {
+            throw std::runtime_error("Expected date MongoDB field: resolvedAt");
+        }
+        alarm.resolvedAt = Clock::time_point{resolvedAt.get_date().value};
+    }
     alarm.message = optionalString(document, "message");
     return alarm;
 }
@@ -359,18 +388,18 @@ domain::TrackIdentityBinding mapTrackIdentityBindingDocument(
     binding.presenceSessionId = requiredString(document, "presenceSessionId");
     binding.confidence = requiredNumber(document, "confidence");
     binding.boundAt = requiredDate(document, "boundAt");
-    binding.status = requiredString(document, "status");
+    binding.status = bindingStatusFromString(requiredString(document, "status"));
     return binding;
 }
 
 domain::QrCheckin mapQrCheckinDocument(bsoncxx::document::view document) {
     domain::QrCheckin qrCheckin{};
-    qrCheckin.checkinId = requiredString(document, "checkinId");
+    qrCheckin.checkInId = requiredString(document, "checkinId");
     qrCheckin.employeeId = requiredString(document, "employeeId");
     qrCheckin.zoneId = requiredString(document, "zoneId");
     qrCheckin.scannedAt = requiredDate(document, "scannedAt");
-    qrCheckin.expiresAt = requiredDate(document, "expiresAt");
-    qrCheckin.status = requiredString(document, "status");
+    qrCheckin.validUntil = requiredDate(document, "expiresAt");
+    qrCheckin.status = qrCheckinStatusFromString(requiredString(document, "status"));
     return qrCheckin;
 }
 
@@ -383,7 +412,7 @@ domain::PresenceSession mapPresenceSessionDocument(bsoncxx::document::view docum
     presenceSession.startedAt = requiredDate(document, "startedAt");
     presenceSession.expiresAt = requiredDate(document, "expiresAt");
     presenceSession.endedAt = optionalDate(document, "endedAt");
-    presenceSession.status = requiredString(document, "status");
+    presenceSession.status = presenceSessionStatusFromString(requiredString(document, "status"));
     return presenceSession;
 }
 

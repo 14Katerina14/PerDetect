@@ -22,6 +22,15 @@ constexpr const char* SessionIdField = "sessionId";
 constexpr const char* StatusField = "status";
 constexpr const char* ZoneIdField = "zoneId";
 
+const char* presenceSessionStatusToString(domain::PresenceSessionStatus status) {
+    switch (status) {
+        case domain::PresenceSessionStatus::Active: return ActiveStatus;
+        case domain::PresenceSessionStatus::Ended: return EndedStatus;
+        case domain::PresenceSessionStatus::Expired: return "expired";
+    }
+    return "expired";
+}
+
 bsoncxx::types::b_date toBsonDate(Clock::time_point timePoint) {
     return bsoncxx::types::b_date{
         std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -54,7 +63,7 @@ bsoncxx::document::value toPresenceSessionDocument(
         bsoncxx::builder::basic::kvp("sourceCheckinId", presenceSession.sourceCheckinId),
         bsoncxx::builder::basic::kvp("startedAt", toBsonDate(presenceSession.startedAt)),
         bsoncxx::builder::basic::kvp("expiresAt", toBsonDate(presenceSession.expiresAt)),
-        bsoncxx::builder::basic::kvp(StatusField, presenceSession.status)
+        bsoncxx::builder::basic::kvp(StatusField, presenceSessionStatusToString(presenceSession.status))
     );
 
     appendOptionalDate(document, "endedAt", presenceSession.endedAt);

@@ -3,7 +3,7 @@
 #include <optional>
 #include <string>
 
-#include "securezone/domain/QrCheckin.h"
+#include "securezone/domain/QrCheckIn.h"
 
 namespace securezone::repository {
 

@@ -5,7 +5,7 @@
 #include <optional>
 #include <string>
 
-#include "securezone/domain/QrCheckin.h"
+#include "securezone/domain/QrCheckIn.h"
 #include "securezone/repository/IQrCheckinRepository.h"
 
 namespace securezone::infrastructure::mongodb::repositories {

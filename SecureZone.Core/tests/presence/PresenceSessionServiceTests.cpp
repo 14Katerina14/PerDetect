@@ -47,7 +47,7 @@ domain::PresenceSession makePresenceSession() {
     session.sourceCheckinId = "CHECKIN-001";
     session.startedAt = testTime(10);
     session.expiresAt = testTime(70);
-    session.status = "active";
+    session.status = domain::PresenceSessionStatus::Active;
     return session;
 }
 
@@ -117,7 +117,7 @@ public:
         const std::string& checkinId
     ) const override {
         for (const auto& checkin : createdCheckins) {
-            if (checkin.checkinId == checkinId) {
+            if (checkin.checkInId == checkinId) {
                 return checkin;
             }
         }
@@ -132,7 +132,7 @@ public:
         for (auto iterator = createdCheckins.rbegin(); iterator != createdCheckins.rend(); ++iterator) {
             if (iterator->employeeId == employeeId
                 && iterator->zoneId == zoneId
-                && iterator->status == "active") {
+                && iterator->status == domain::QrCheckInStatus::Active) {
                 return *iterator;
             }
         }

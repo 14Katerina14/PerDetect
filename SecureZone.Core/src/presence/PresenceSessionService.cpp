@@ -5,15 +5,13 @@
 
 #include "securezone/domain/Employee.h"
 #include "securezone/domain/PresenceSession.h"
-#include "securezone/domain/QrCheckin.h"
+#include "securezone/domain/QrCheckIn.h"
 
 namespace securezone::presence {
 
 namespace {
 
 using Clock = std::chrono::system_clock;
-
-constexpr const char* ActiveStatus = "active";
 
 std::string timestampSuffix(Clock::time_point timePoint) {
     const auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -35,12 +33,12 @@ domain::QrCheckin createQrCheckin(
     const PresenceSessionStartRequest& request
 ) {
     domain::QrCheckin qrCheckin{};
-    qrCheckin.checkinId = request.checkinId;
+    qrCheckin.checkInId = request.checkinId;
     qrCheckin.employeeId = request.employeeId;
     qrCheckin.zoneId = request.zoneId;
     qrCheckin.scannedAt = request.scannedAt;
-    qrCheckin.expiresAt = request.expiresAt;
-    qrCheckin.status = ActiveStatus;
+    qrCheckin.validUntil = request.expiresAt;
+    qrCheckin.status = domain::QrCheckInStatus::Active;
     return qrCheckin;
 }
 
@@ -58,7 +56,7 @@ domain::PresenceSession createPresenceSession(
     presenceSession.sourceCheckinId = request.checkinId;
     presenceSession.startedAt = request.scannedAt;
     presenceSession.expiresAt = request.expiresAt;
-    presenceSession.status = ActiveStatus;
+    presenceSession.status = domain::PresenceSessionStatus::Active;
     return presenceSession;
 }
 
@@ -66,7 +64,8 @@ domain::PresenceSession createPresenceSession(
 
 bool PresenceSessionStartResult::accepted() const {
     return status == PresenceSessionStartStatus::Started
-        || status == PresenceSessionStartStatus::Extended;
+        || status == PresenceSessionStartStatus::Extended
+        || status == PresenceSessionStartStatus::AlreadyActive;
 }
 
 PresenceSessionService::PresenceSessionService(
@@ -83,6 +82,16 @@ PresenceSessionService::PresenceSessionService(
 PresenceSessionStartResult PresenceSessionService::startFromQrCheckin(
     const PresenceSessionStartRequest& request
 ) {
+    if (request.checkinId.empty()
+        || request.employeeId.empty()
+        || request.zoneId.empty()
+        || request.expiresAt <= request.scannedAt) {
+        return PresenceSessionStartResult{
+            PresenceSessionStartStatus::InvalidRequest,
+            {}
+        };
+    }
+
     auto employee = employeeRepository_.findByEmployeeId(request.employeeId);
     if (!employee.has_value()) {
         return PresenceSessionStartResult{
@@ -106,6 +115,13 @@ PresenceSessionStartResult PresenceSessionService::startFromQrCheckin(
         };
     }
 
+    if (zone->status != domain::ZoneStatus::Active) {
+        return PresenceSessionStartResult{
+            PresenceSessionStartStatus::ZoneInactive,
+            {}
+        };
+    }
+
     qrCheckinRepository_.create(createQrCheckin(request));
 
     auto activeSession = presenceSessionRepository_.findActiveByEmployeeAndZone(
@@ -114,9 +130,16 @@ PresenceSessionStartResult PresenceSessionService::startFromQrCheckin(
     );
 
     if (activeSession.has_value()) {
-        presenceSessionRepository_.extend(activeSession->sessionId, request.expiresAt);
+        if (activeSession->canExtendTo(request.expiresAt)) {
+            presenceSessionRepository_.extend(activeSession->sessionId, request.expiresAt);
+            return PresenceSessionStartResult{
+                PresenceSessionStartStatus::Extended,
+                activeSession->sessionId
+            };
+        }
+
         return PresenceSessionStartResult{
-            PresenceSessionStartStatus::Extended,
+            PresenceSessionStartStatus::AlreadyActive,
             activeSession->sessionId
         };
     }
