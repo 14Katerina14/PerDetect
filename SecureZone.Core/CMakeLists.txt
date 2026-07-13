@@ -11,6 +11,7 @@ add_library(SecureZoneCore
     src/identity/RolePermissionService.cpp
     src/identity/TrackAssociationService.cpp
     src/metadata/MetadataIngestionService.cpp
+    src/metadata/MetadataPersistenceService.cpp
     src/metadata/OnvifMetadataParser.cpp
     src/presence/PresenceSessionService.cpp)
 target_compile_features(SecureZoneCore PUBLIC cxx_std_17)
@@ -24,6 +25,7 @@ set(SECUREZONE_CORE_TESTS
     AlarmPersistenceTests
     RolePermissionTests
     MetadataIngestionServiceTests
+    MetadataPersistenceServiceTests
     OnvifMetadataParserTests
     PresenceSessionServiceTests
 )
@@ -33,6 +35,8 @@ foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
         set(test_source tests/presence/PresenceSessionServiceTests.cpp)
     elseif(test_name STREQUAL "MetadataIngestionServiceTests")
         set(test_source tests/metadata/MetadataIngestionServiceTests.cpp)
+    elseif(test_name STREQUAL "MetadataPersistenceServiceTests")
+        set(test_source tests/metadata/MetadataPersistenceServiceTests.cpp)
     elseif(test_name STREQUAL "OnvifMetadataParserTests")
         set(test_source tests/metadata/OnvifMetadataParserTests.cpp)
     else()
