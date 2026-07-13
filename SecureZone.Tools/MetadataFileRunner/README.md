@@ -25,4 +25,40 @@ Optional identity grace period mode:
 
 ## Output
 
-The runner prints a summary of detections, persisted tracks/events, decisions, violations, and alarms.
+The runner prints a grouped summary:
+
+- input camera/file settings
+- metadata processing counters
+- decision engine counters
+- in-memory storage counters
+- created/resolved alarms
+
+Example:
+
+```text
+== Input ==
+Camera ID: CAM-001
+Metadata file: C:\path\to\metadata.xml
+Identity grace period: disabled
+
+== Processing ==
+Detections processed: 1
+Tracks upserted: 1
+Events created: 1
+
+== Decision ==
+Detections checked: 1
+Decisions evaluated: 1
+Allowed: 0
+Pending identity: 0
+Violations: 1
+Ignored: 0
+
+== Storage ==
+Stored tracks: 1
+Stored metadata events: 1
+
+== Alarms ==
+Alarms created: 1
+Alarms resolved: 0
+```

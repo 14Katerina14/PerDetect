@@ -388,25 +388,53 @@ domain::AccessPolicy createDemoAccessPolicy() {
     return accessPolicy;
 }
 
+void printSection(const std::string& title) {
+    std::cout << "\n== " << title << " ==\n";
+}
+
+void printMetric(const std::string& label, std::size_t value) {
+    std::cout << label << ": " << value << '\n';
+}
+
 void printResult(
+    const RunnerOptions& options,
     const metadata::MetadataApplicationResult& result,
     const InMemoryAlarmRepository& alarmRepository,
     const InMemoryCameraTrackRepository& cameraTrackRepository,
     const InMemoryMetadataEventRepository& metadataEventRepository
 ) {
+    printSection("Input");
     std::cout
-        << "Detections processed: " << result.processing.detectionsProcessed << '\n'
-        << "Tracks upserted: " << result.processing.tracksUpserted << '\n'
-        << "Events created: " << result.processing.eventsCreated << '\n'
-        << "Decisions evaluated: " << result.decisions.decisionsEvaluated << '\n'
-        << "Allowed: " << result.decisions.allowed << '\n'
-        << "Pending identity: " << result.decisions.pendingIdentity << '\n'
-        << "Violations: " << result.decisions.violations << '\n'
-        << "Ignored: " << result.decisions.ignored << '\n'
-        << "Alarms created: " << result.decisions.alarmsCreated << '\n'
-        << "Alarms resolved: " << result.decisions.alarmsResolved << '\n'
-        << "Stored tracks: " << cameraTrackRepository.size() << '\n'
-        << "Stored metadata events: " << metadataEventRepository.size() << '\n';
+        << "Camera ID: " << options.cameraId << '\n'
+        << "Metadata file: " << options.metadataFile << '\n'
+        << "Identity grace period: "
+        << (options.identityGracePeriodActive ? "enabled" : "disabled") << '\n';
+
+    printSection("Processing");
+    printMetric("Detections processed", result.processing.detectionsProcessed);
+    printMetric("Tracks upserted", result.processing.tracksUpserted);
+    printMetric("Events created", result.processing.eventsCreated);
+
+    printSection("Decision");
+    printMetric("Detections checked", result.decisions.detectionsChecked);
+    printMetric("Decisions evaluated", result.decisions.decisionsEvaluated);
+    printMetric("Allowed", result.decisions.allowed);
+    printMetric("Pending identity", result.decisions.pendingIdentity);
+    printMetric("Violations", result.decisions.violations);
+    printMetric("Ignored", result.decisions.ignored);
+
+    printSection("Storage");
+    printMetric("Stored tracks", cameraTrackRepository.size());
+    printMetric("Stored metadata events", metadataEventRepository.size());
+
+    printSection("Alarms");
+    printMetric("Alarms created", result.decisions.alarmsCreated);
+    printMetric("Alarms resolved", result.decisions.alarmsResolved);
+
+    if (alarmRepository.alarms().empty()) {
+        std::cout << "No alarms recorded.\n";
+        return;
+    }
 
     for (const auto& alarm : alarmRepository.alarms()) {
         std::cout
@@ -474,7 +502,7 @@ int run(const RunnerOptions& options) {
         }
     );
 
-    printResult(result, alarmRepository, cameraTrackRepository, metadataEventRepository);
+    printResult(options, result, alarmRepository, cameraTrackRepository, metadataEventRepository);
     return 0;
 }
 
