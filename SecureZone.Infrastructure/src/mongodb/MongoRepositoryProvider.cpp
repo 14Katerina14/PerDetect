@@ -14,6 +14,7 @@ constexpr const char* PresenceSessionsCollection = "presence_sessions";
 constexpr const char* QrCheckinsCollection = "qr_checkins";
 constexpr const char* TrackIdentityBindingsCollection = "track_identity_bindings";
 constexpr const char* ZonesCollection = "zones";
+constexpr const char* WebhookTargetsCollection = "webhook_targets";
 
 }
 
@@ -78,6 +79,13 @@ repositories::MongoQrCheckinRepository MongoRepositoryProvider::qrCheckinReposit
 repositories::MongoPresenceSessionRepository MongoRepositoryProvider::presenceSessionRepository() {
     return repositories::MongoPresenceSessionRepository{
         client_.database()[PresenceSessionsCollection]
+    };
+}
+
+repositories::MongoWebhookTargetRepository
+MongoRepositoryProvider::webhookTargetRepository() {
+    return repositories::MongoWebhookTargetRepository{
+        client_.database()[WebhookTargetsCollection]
     };
 }
 

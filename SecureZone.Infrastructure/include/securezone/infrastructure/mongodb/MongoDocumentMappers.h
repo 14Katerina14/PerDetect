@@ -12,6 +12,7 @@
 #include "securezone/domain/QrCheckIn.h"
 #include "securezone/domain/TrackIdentityBinding.h"
 #include "securezone/domain/Zone.h"
+#include "securezone/domain/WebhookTarget.h"
 
 namespace securezone::infrastructure::mongodb {
 
@@ -25,5 +26,6 @@ domain::MetadataEvent mapMetadataEventDocument(bsoncxx::document::view document)
 domain::TrackIdentityBinding mapTrackIdentityBindingDocument(bsoncxx::document::view document);
 domain::QrCheckin mapQrCheckinDocument(bsoncxx::document::view document);
 domain::PresenceSession mapPresenceSessionDocument(bsoncxx::document::view document);
+domain::WebhookTarget mapWebhookTargetDocument(bsoncxx::document::view document);
 
 }

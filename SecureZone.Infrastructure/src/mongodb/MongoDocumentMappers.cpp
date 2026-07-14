@@ -228,6 +228,14 @@ domain::PresenceSessionStatus presenceSessionStatusFromString(const std::string&
     return domain::PresenceSessionStatus::Expired;
 }
 
+domain::WebhookTargetStatus webhookTargetStatusFromString(
+    const std::string& value
+) {
+    return value == "active"
+        ? domain::WebhookTargetStatus::Active
+        : domain::WebhookTargetStatus::Inactive;
+}
+
 std::vector<domain::MachineStatus> machineStatusArray(
     bsoncxx::document::view document,
     const char* fieldName
@@ -414,6 +422,19 @@ domain::PresenceSession mapPresenceSessionDocument(bsoncxx::document::view docum
     presenceSession.endedAt = optionalDate(document, "endedAt");
     presenceSession.status = presenceSessionStatusFromString(requiredString(document, "status"));
     return presenceSession;
+}
+
+domain::WebhookTarget mapWebhookTargetDocument(
+    bsoncxx::document::view document
+) {
+    domain::WebhookTarget target{};
+    target.targetId = requiredString(document, "targetId");
+    target.name = requiredString(document, "name");
+    target.url = requiredString(document, "url");
+    target.status = webhookTargetStatusFromString(requiredString(document, "status"));
+    target.createdAt = requiredDate(document, "createdAt");
+    target.updatedAt = requiredDate(document, "updatedAt");
+    return target;
 }
 
 }

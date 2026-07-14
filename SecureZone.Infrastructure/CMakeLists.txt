@@ -15,6 +15,7 @@ add_library(SecureZone.Infrastructure
     src/mongodb/repositories/MongoPresenceSessionRepository.cpp
     src/mongodb/repositories/MongoQrCheckinRepository.cpp
     src/mongodb/repositories/MongoTrackIdentityBindingRepository.cpp
+    src/mongodb/repositories/MongoWebhookTargetRepository.cpp
     src/mongodb/repositories/MongoZoneRepository.cpp
 )
 

@@ -11,6 +11,7 @@
 #include "securezone/infrastructure/mongodb/repositories/MongoQrCheckinRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoTrackIdentityBindingRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoZoneRepository.h"
+#include "securezone/infrastructure/mongodb/repositories/MongoWebhookTargetRepository.h"
 
 namespace securezone::infrastructure::mongodb {
 
@@ -28,6 +29,7 @@ public:
     repositories::MongoTrackIdentityBindingRepository trackIdentityBindingRepository();
     repositories::MongoQrCheckinRepository qrCheckinRepository();
     repositories::MongoPresenceSessionRepository presenceSessionRepository();
+    repositories::MongoWebhookTargetRepository webhookTargetRepository();
 
 private:
     MongoDbClient& client_;
