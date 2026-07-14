@@ -321,8 +321,13 @@ void printUsage() {
         << "[--identity-grace-period] [--output-json result.json]\n";
 }
 
-std::optional<RunnerOptions> parseArguments(int argc, char** argv) {
+std::optional<RunnerOptions> parseArguments(
+    int argc,
+    char** argv,
+    bool& helpRequested
+) {
     RunnerOptions options{};
+    helpRequested = false;
 
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
@@ -336,6 +341,7 @@ std::optional<RunnerOptions> parseArguments(int argc, char** argv) {
         } else if (argument == "--identity-grace-period") {
             options.identityGracePeriodActive = true;
         } else if (argument == "--help" || argument == "-h") {
+            helpRequested = true;
             printUsage();
             return std::nullopt;
         } else {
@@ -679,9 +685,10 @@ int run(const RunnerOptions& options) {
 
 int main(int argc, char** argv) {
     try {
-        const auto options = parseArguments(argc, argv);
+        bool helpRequested = false;
+        const auto options = parseArguments(argc, argv, helpRequested);
         if (!options.has_value()) {
-            return argc == 1 ? 1 : 0;
+            return helpRequested ? 0 : 1;
         }
 
         return run(*options);
