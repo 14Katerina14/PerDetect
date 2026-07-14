@@ -2,6 +2,8 @@
 #include <optional>
 #include <string>
 
+#include "BackendConfig.h"
+
 namespace {
 
 struct BackendOptions {
@@ -57,10 +59,18 @@ int run(const BackendOptions& options) {
         << "SecureZone Backend\n"
         << "Mode: " << options.mode << '\n';
 
+    std::optional<securezone::backend::BackendConfig> config;
     if (options.configPath.empty()) {
         std::cout << "Config: not provided\n";
     } else {
         std::cout << "Config: " << options.configPath << '\n';
+        config = securezone::backend::loadBackendConfig(options.configPath);
+        std::cout
+            << "Config camera ID: " << config->cameraId << '\n'
+            << "Config metadata input mode: " << config->metadataInputMode << '\n'
+            << "Config metadata file: " << config->metadataFilePath << '\n'
+            << "Config Mongo database: " << config->mongoDatabaseName << '\n'
+            << "Config Mongo URI env: " << config->mongoConnectionStringEnv << '\n';
     }
 
     if (options.dryRun) {

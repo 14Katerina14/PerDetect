@@ -1,0 +1,7 @@
+{
+  "mongoConnectionStringEnv": "SECUREZONE_MONGO_URI",
+  "mongoDatabaseName": "securezone",
+  "cameraId": "CAM-001",
+  "metadataInputMode": "file",
+  "metadataFilePath": "SecureZone.Tools/MetadataFileRunner/fixtures/person_inside_dangerous_zone.xml"
+}
