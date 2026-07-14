@@ -29,6 +29,25 @@ Optional JSON output:
 .\build\SecureZone.Tools\MetadataFileRunner\Debug\SecureZoneMetadataFileRunner.exe --camera-id CAM-001 --metadata-file C:\path\to\metadata.xml --output-json C:\path\to\result.json
 ```
 
+## Repeatable sample fixtures
+
+The repository includes camera-free ONVIF metadata samples in `fixtures/`.
+Run these commands from the repository root after building the runner:
+
+```powershell
+# Expected: one violation and one alarm.
+.\build\SecureZone.Tools\MetadataFileRunner\Debug\SecureZoneMetadataFileRunner.exe --camera-id CAM-001 --metadata-file .\SecureZone.Tools\MetadataFileRunner\fixtures\person_inside_dangerous_zone.xml
+
+# Expected: detected person, but no alarm because the person is outside the demo zone.
+.\build\SecureZone.Tools\MetadataFileRunner\Debug\SecureZoneMetadataFileRunner.exe --camera-id CAM-001 --metadata-file .\SecureZone.Tools\MetadataFileRunner\fixtures\person_outside_dangerous_zone.xml
+
+# Expected: no tracks, decisions, or alarms.
+.\build\SecureZone.Tools\MetadataFileRunner\Debug\SecureZoneMetadataFileRunner.exe --camera-id CAM-001 --metadata-file .\SecureZone.Tools\MetadataFileRunner\fixtures\empty_no_person_metadata.xml
+```
+
+The demo dangerous zone is the rectangle from `(0, 0)` to `(10000, 10000)`.
+The fixture coordinates are deliberately chosen around that boundary.
+
 ## Output
 
 The runner prints a grouped summary:

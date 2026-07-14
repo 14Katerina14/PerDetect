@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Demo fixture: the person's centre is (1000, 1000), inside the runner's
+  default dangerous zone (0..10000 on both axes). Expected result: violation
+  and one alarm because the demo has no confirmed identity.
+-->
+<tt:MetadataStream xmlns:tt="http://www.onvif.org/ver10/schema"><tt:VideoAnalytics><tt:Frame UtcTime="2026-07-14T10:00:00.000Z" Source="FixtureCamera"><tt:Object ObjectId="PERSON-INSIDE-001"><tt:Appearance><tt:Shape><tt:BoundingBox left="800.0" top="600.0" right="1200.0" bottom="1400.0"/><tt:CenterOfGravity x="1000.0" y="1000.0"/></tt:Shape><tt:Class><tt:ClassCandidate><tt:Type>Human</tt:Type><tt:Likelihood>0.98</tt:Likelihood></tt:ClassCandidate></tt:Class></tt:Appearance></tt:Object></tt:Frame></tt:VideoAnalytics></tt:MetadataStream>
