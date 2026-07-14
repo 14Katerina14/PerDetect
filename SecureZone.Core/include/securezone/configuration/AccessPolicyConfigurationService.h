@@ -1,5 +1,59 @@
 #pragma once
+
 #include <string>
+#include <vector>
+
+#include "securezone/domain/AccessPolicy.h"
+#include "securezone/domain/MachineState.h"
 #include "securezone/repository/IAccessPolicyRepository.h"
 #include "securezone/repository/IZoneRepository.h"
-namespace securezone::configuration { enum class AccessPolicyConfigurationStatus { Updated, InvalidPolicy, ZoneNotFound, RepositoryFailure }; struct AccessPolicyConfigurationResult { AccessPolicyConfigurationStatus status{}; bool succeeded()const{return status==AccessPolicyConfigurationStatus::Updated;} }; class AccessPolicyConfigurationService { public: AccessPolicyConfigurationService(repository::IAccessPolicyRepository& p,const repository::IZoneRepository& z):p_{p},z_{z}{} AccessPolicyConfigurationResult save(domain::AccessPolicy policy)const{auto z=z_.findByZoneId(policy.zoneId);if(policy.zoneId.empty())return{AccessPolicyConfigurationStatus::InvalidPolicy};if(!z)return{AccessPolicyConfigurationStatus::ZoneNotFound};if((z->type==domain::ZoneType::Restricted||z->type==domain::ZoneType::Dangerous)&&policy.allowedRoles.empty())return{AccessPolicyConfigurationStatus::InvalidPolicy};return{p_.save(policy)?AccessPolicyConfigurationStatus::Updated:AccessPolicyConfigurationStatus::RepositoryFailure};} private:repository::IAccessPolicyRepository&p_;const repository::IZoneRepository&z_;}; }
+
+namespace securezone::configuration {
+
+enum class AccessPolicyConfigurationStatus {
+    Updated,
+    InvalidPolicy,
+    ZoneNotFound,
+    PolicyNotFound,
+    PolicyAlreadyExists,
+    RepositoryFailure
+};
+
+struct AccessPolicyConfigurationResult {
+    AccessPolicyConfigurationStatus status{};
+
+    bool succeeded() const {
+        return status == AccessPolicyConfigurationStatus::Updated;
+    }
+};
+
+class AccessPolicyConfigurationService {
+public:
+    AccessPolicyConfigurationService(
+        repository::IAccessPolicyRepository& policyRepository,
+        const repository::IZoneRepository& zoneRepository
+    );
+
+    AccessPolicyConfigurationResult create(domain::AccessPolicy policy) const;
+    AccessPolicyConfigurationResult updateAllowedRoles(
+        const std::string& zoneId,
+        std::vector<std::string> allowedRoles
+    ) const;
+    AccessPolicyConfigurationResult updateAllowedMachineStates(
+        const std::string& zoneId,
+        std::vector<domain::MachineStatus> machineStates
+    ) const;
+    AccessPolicyConfigurationResult replaceForZone(
+        domain::AccessPolicy policy
+    ) const;
+
+private:
+    AccessPolicyConfigurationResult validateAndSave(
+        const domain::AccessPolicy& policy
+    ) const;
+
+    repository::IAccessPolicyRepository& policyRepository_;
+    const repository::IZoneRepository& zoneRepository_;
+};
+
+}

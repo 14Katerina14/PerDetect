@@ -18,6 +18,8 @@ public:
         const std::string& zoneId
     ) const override;
 
+    bool save(const domain::AccessPolicy& policy) override;
+
 private:
     mongocxx::collection accessPoliciesCollection_;
 };
