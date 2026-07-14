@@ -2,12 +2,12 @@
 
 SecureZone backend service runner.
 
-This executable will become the application entry point that wires config,
-repositories, metadata input, processing, decisions, alarm persistence, and
-webhook delivery records.
+This executable is the application entry point that wires config, repositories,
+metadata input, processing, decisions, alarm persistence, and webhook delivery
+records.
 
-The current version is a skeleton only. It validates command-line arguments and
-prints the selected runtime mode without connecting to MongoDB or XProtect yet.
+The current version supports local metadata file input with in-memory metadata
+repositories. MongoDB and XProtect live stream wiring will be added later.
 
 ## Structure
 
@@ -29,6 +29,7 @@ cmake --build build --config Debug --target SecureZoneBackend
 ```powershell
 copy .\SecureZone.Backend\securezone.backend.example.json .\securezone.backend.json
 .\build\SecureZone.Backend\Debug\SecureZoneBackend.exe --mode file --config .\securezone.backend.json --dry-run
+.\build\SecureZone.Backend\Debug\SecureZoneBackend.exe --mode file --config .\securezone.backend.json
 ```
 
 ## Options
@@ -56,3 +57,16 @@ The MongoDB connection string is referenced by environment variable name:
 ```
 
 Store the actual MongoDB URI in `SECUREZONE_MONGO_URI`, not in the config file.
+
+## File Metadata Mode
+
+In `metadataInputMode: "file"`, the backend reads `metadataFilePath`, processes
+the XML through the core metadata pipeline, and prints:
+
+- detections processed
+- tracks upserted
+- events created
+- stored tracks
+- stored metadata events
+
+This mode uses in-memory metadata repositories until MongoDB wiring is added.

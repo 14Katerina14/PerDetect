@@ -5,6 +5,7 @@ add_executable(SecureZoneBackend
     src/BackendApplication.cpp
     src/BackendCompositionRoot.cpp
     src/BackendConfig.cpp
+    src/InMemoryMetadataRepositories.cpp
     src/main.cpp)
 
 target_compile_features(SecureZoneBackend PRIVATE cxx_std_20)
