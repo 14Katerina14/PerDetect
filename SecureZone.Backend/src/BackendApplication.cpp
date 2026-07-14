@@ -7,7 +7,14 @@
 #include <string>
 #include <utility>
 
+#include "DemoBackendConfiguration.h"
+#include "InMemoryDecisionRepositories.h"
 #include "InMemoryMetadataRepositories.h"
+#include "securezone/alarm/AlarmPersistenceService.h"
+#include "securezone/decision/DecisionContextLoader.h"
+#include "securezone/decision/DecisionEngine.h"
+#include "securezone/geometry/ZoneGeometryService.h"
+#include "securezone/metadata/MetadataApplicationService.h"
 #include "securezone/metadata/MetadataIngestionService.h"
 #include "securezone/metadata/MetadataPersistenceService.h"
 #include "securezone/metadata/MetadataProcessingService.h"
@@ -29,21 +36,46 @@ std::string readTextFile(const std::string& path) {
 }
 
 void printProcessingSummary(
-    const metadata::MetadataProcessingResult& result,
+    const metadata::MetadataApplicationResult& result,
     const InMemoryCameraTrackRepository& cameraTrackRepository,
-    const InMemoryMetadataEventRepository& metadataEventRepository
+    const InMemoryMetadataEventRepository& metadataEventRepository,
+    const InMemoryAlarmRepository& alarmRepository
 ) {
     std::cout
         << "\n== Metadata Processing ==\n"
-        << "Detections processed: " << result.detectionsProcessed << '\n'
-        << "Tracks upserted: " << result.tracksUpserted << '\n'
-        << "Events created: " << result.eventsCreated << '\n'
+        << "Detections processed: " << result.processing.detectionsProcessed << '\n'
+        << "Tracks upserted: " << result.processing.tracksUpserted << '\n'
+        << "Events created: " << result.processing.eventsCreated << '\n'
         << "Stored tracks: " << cameraTrackRepository.size() << '\n'
-        << "Stored metadata events: " << metadataEventRepository.size() << '\n';
+        << "Stored metadata events: " << metadataEventRepository.size() << '\n'
+        << "\n== Decision Pipeline ==\n"
+        << "Detections checked: " << result.decisions.detectionsChecked << '\n'
+        << "Decisions evaluated: " << result.decisions.decisionsEvaluated << '\n'
+        << "Allowed: " << result.decisions.allowed << '\n'
+        << "Pending identity: " << result.decisions.pendingIdentity << '\n'
+        << "Violations: " << result.decisions.violations << '\n'
+        << "Ignored: " << result.decisions.ignored << '\n'
+        << "Alarms created: " << result.decisions.alarmsCreated << '\n'
+        << "Alarms resolved: " << result.decisions.alarmsResolved << '\n';
+
+    if (alarmRepository.alarms().empty()) {
+        std::cout << "No alarms recorded.\n";
+        return;
+    }
+
+    for (const auto& alarm : alarmRepository.alarms()) {
+        std::cout
+            << "Alarm: " << alarm.alarmId
+            << " | track=" << alarm.trackId
+            << " | zone=" << alarm.zoneId
+            << " | reason=" << alarm.reason
+            << '\n';
+    }
 }
 
 int processMetadataFile(const BackendConfig& config) {
     const auto rawMetadata = readTextFile(config.metadataFilePath);
+    const auto zone = createDemoZone(config);
 
     metadata::OnvifMetadataParser parser{};
     metadata::MetadataIngestionService ingestionService{parser};
@@ -58,8 +90,49 @@ int processMetadataFile(const BackendConfig& config) {
         persistenceService
     };
 
-    const auto result = processingService.process(config.cameraId, rawMetadata);
-    printProcessingSummary(result, cameraTrackRepository, metadataEventRepository);
+    InMemoryEmployeeRepository employeeRepository{};
+    InMemoryZoneRepository zoneRepository{zone};
+    InMemoryMachineRepository machineRepository{createDemoMachine()};
+    InMemoryAccessPolicyRepository accessPolicyRepository{createDemoAccessPolicy()};
+    decision::DecisionContextLoader decisionContextLoader{
+        employeeRepository,
+        zoneRepository,
+        machineRepository,
+        accessPolicyRepository
+    };
+
+    geometry::ZoneGeometryService zoneGeometryService{};
+    decision::DecisionEngine decisionEngine{};
+    InMemoryTrackIdentityBindingRepository bindingRepository{};
+    InMemoryAlarmRepository alarmRepository{};
+    alarm::AlarmPersistenceService alarmPersistenceService{alarmRepository};
+    metadata::MetadataDecisionTriggerService decisionTriggerService{
+        zoneGeometryService,
+        decisionContextLoader,
+        decisionEngine,
+        alarmPersistenceService,
+        bindingRepository,
+        alarmRepository
+    };
+    metadata::MetadataApplicationService applicationService{
+        processingService,
+        decisionTriggerService
+    };
+
+    const auto result = applicationService.handle(
+        metadata::MetadataApplicationRequest{
+            config.cameraId,
+            rawMetadata,
+            {zone},
+            false
+        }
+    );
+    printProcessingSummary(
+        result,
+        cameraTrackRepository,
+        metadataEventRepository,
+        alarmRepository
+    );
     return 0;
 }
 

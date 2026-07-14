@@ -7,7 +7,8 @@ metadata input, processing, decisions, alarm persistence, and webhook delivery
 records.
 
 The current version supports local metadata file input with in-memory metadata
-repositories. MongoDB and XProtect live stream wiring will be added later.
+and decision repositories. MongoDB and XProtect live stream wiring will be added
+later.
 
 ## Structure
 
@@ -61,12 +62,16 @@ Store the actual MongoDB URI in `SECUREZONE_MONGO_URI`, not in the config file.
 ## File Metadata Mode
 
 In `metadataInputMode: "file"`, the backend reads `metadataFilePath`, processes
-the XML through the core metadata pipeline, and prints:
+the XML through the core metadata and decision pipeline, and prints:
 
 - detections processed
 - tracks upserted
 - events created
 - stored tracks
 - stored metadata events
+- decisions evaluated
+- allowed / pending identity / violations
+- alarms created / resolved
 
-This mode uses in-memory metadata repositories until MongoDB wiring is added.
+This mode uses a demo dangerous zone from `(0, 0)` to `(10000, 10000)`, a demo
+running machine, and in-memory repositories until MongoDB wiring is added.

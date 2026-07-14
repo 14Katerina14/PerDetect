@@ -5,6 +5,8 @@ add_executable(SecureZoneBackend
     src/BackendApplication.cpp
     src/BackendCompositionRoot.cpp
     src/BackendConfig.cpp
+    src/DemoBackendConfiguration.cpp
+    src/InMemoryDecisionRepositories.cpp
     src/InMemoryMetadataRepositories.cpp
     src/main.cpp)
 
