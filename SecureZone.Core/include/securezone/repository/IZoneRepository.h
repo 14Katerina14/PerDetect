@@ -18,6 +18,8 @@ public:
     virtual std::optional<domain::Zone> findActiveByZoneId(
         const std::string& zoneId
     ) const = 0;
+
+    virtual bool save(const domain::Zone&) { return false; }
 };
 
 }
