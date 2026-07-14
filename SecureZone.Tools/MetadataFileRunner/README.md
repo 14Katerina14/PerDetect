@@ -11,6 +11,15 @@ cmake -S . -B build -DSECUREZONE_BUILD_MONGODB_INFRA=OFF
 cmake --build build --config Debug --target SecureZoneMetadataFileRunner
 ```
 
+## Test
+
+The integration test runs all sample fixtures, validates the generated JSON,
+and covers the required CLI error cases without external services:
+
+```powershell
+ctest --test-dir build -C Debug -R MetadataFileRunnerIntegrationTests --output-on-failure
+```
+
 ## Run
 
 ```powershell
