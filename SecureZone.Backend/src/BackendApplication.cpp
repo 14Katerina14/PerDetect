@@ -1,11 +1,15 @@
 #include "BackendApplication.h"
 
+#include <chrono>
 #include <fstream>
+#include <functional>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "DemoBackendConfiguration.h"
 #include "InMemoryDecisionRepositories.h"
@@ -19,10 +23,14 @@
 #include "securezone/metadata/MetadataPersistenceService.h"
 #include "securezone/metadata/MetadataProcessingService.h"
 #include "securezone/metadata/OnvifMetadataParser.h"
+#include "securezone/webhook/WebhookDeliveryService.h"
+#include "securezone/webhook/WebhookNotificationService.h"
 
 namespace securezone::backend {
 
 namespace {
+
+constexpr const char* DemoWebhookTargetUrl = "https://hooks.example.test/securezone";
 
 std::string readTextFile(const std::string& path) {
     std::ifstream file{path, std::ios::in | std::ios::binary};
@@ -35,11 +43,65 @@ std::string readTextFile(const std::string& path) {
     return buffer.str();
 }
 
+std::string webhookDeliveryStatusToString(webhook::WebhookDeliveryStatus status) {
+    switch (status) {
+    case webhook::WebhookDeliveryStatus::Pending:
+        return "pending";
+    case webhook::WebhookDeliveryStatus::Delivered:
+        return "delivered";
+    case webhook::WebhookDeliveryStatus::Failed:
+        return "failed";
+    }
+
+    return "unknown";
+}
+
+std::vector<webhook::WebhookDeliveryRecord> prepareWebhookDeliveries(
+    const InMemoryAlarmRepository& alarmRepository,
+    const domain::Zone& zone,
+    const InMemoryMachineRepository& machineRepository
+) {
+    webhook::WebhookNotificationService notificationService{};
+    webhook::WebhookDeliveryService deliveryService{};
+    std::vector<webhook::WebhookDeliveryRecord> deliveries;
+
+    for (const auto& alarm : alarmRepository.alarms()) {
+        const auto machine = alarm.machineId.empty()
+            ? std::optional<domain::MachineState>{}
+            : machineRepository.findByMachineId(alarm.machineId);
+
+        const auto payload = notificationService.createAlarmNotificationPayload(
+            alarm,
+            webhook::AlarmNotificationContext{
+                zone,
+                std::nullopt,
+                machine.has_value()
+                    ? std::optional<std::reference_wrapper<const domain::MachineState>>{
+                        std::cref(*machine)
+                    }
+                    : std::nullopt,
+                std::chrono::system_clock::now()
+            }
+        );
+
+        deliveries.push_back(
+            deliveryService.createPendingDelivery(
+                payload,
+                DemoWebhookTargetUrl,
+                std::chrono::system_clock::now()
+            )
+        );
+    }
+
+    return deliveries;
+}
+
 void printProcessingSummary(
     const metadata::MetadataApplicationResult& result,
     const InMemoryCameraTrackRepository& cameraTrackRepository,
     const InMemoryMetadataEventRepository& metadataEventRepository,
-    const InMemoryAlarmRepository& alarmRepository
+    const InMemoryAlarmRepository& alarmRepository,
+    const std::vector<webhook::WebhookDeliveryRecord>& webhookDeliveries
 ) {
     std::cout
         << "\n== Metadata Processing ==\n"
@@ -69,6 +131,25 @@ void printProcessingSummary(
             << " | track=" << alarm.trackId
             << " | zone=" << alarm.zoneId
             << " | reason=" << alarm.reason
+            << '\n';
+    }
+
+    std::cout
+        << "\n== Webhook Delivery Records ==\n"
+        << "Deliveries prepared: " << webhookDeliveries.size() << '\n'
+        << "Target URL: " << DemoWebhookTargetUrl << '\n';
+
+    if (webhookDeliveries.empty()) {
+        std::cout << "No webhook delivery records prepared.\n";
+        return;
+    }
+
+    for (const auto& delivery : webhookDeliveries) {
+        std::cout
+            << "Delivery: " << delivery.deliveryId
+            << " | alarm=" << delivery.alarmId
+            << " | status=" << webhookDeliveryStatusToString(delivery.status)
+            << " | attempts=" << delivery.attempts
             << '\n';
     }
 }
@@ -127,11 +208,17 @@ int processMetadataFile(const BackendConfig& config) {
             false
         }
     );
+    const auto webhookDeliveries = prepareWebhookDeliveries(
+        alarmRepository,
+        zone,
+        machineRepository
+    );
     printProcessingSummary(
         result,
         cameraTrackRepository,
         metadataEventRepository,
-        alarmRepository
+        alarmRepository,
+        webhookDeliveries
     );
     return 0;
 }

@@ -8,7 +8,8 @@ records.
 
 The current version supports local metadata file input with in-memory metadata
 and decision repositories. MongoDB and XProtect live stream wiring will be added
-later.
+later. Webhook delivery records are prepared in memory, without real HTTP
+sending.
 
 ## Structure
 
@@ -72,6 +73,11 @@ the XML through the core metadata and decision pipeline, and prints:
 - decisions evaluated
 - allowed / pending identity / violations
 - alarms created / resolved
+- webhook delivery records prepared
 
 This mode uses a demo dangerous zone from `(0, 0)` to `(10000, 10000)`, a demo
 running machine, and in-memory repositories until MongoDB wiring is added.
+
+When an alarm is created, the backend creates a pending webhook delivery record
+for the demo target `https://hooks.example.test/securezone`. The current backend
+does not send HTTP requests yet.
