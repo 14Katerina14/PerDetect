@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Demo fixture: a valid ONVIF analytics frame with no objects. It represents
+  lost/empty metadata and must complete without tracks, decisions, or alarms.
+-->
+<tt:MetadataStream xmlns:tt="http://www.onvif.org/ver10/schema">
+  <tt:VideoAnalytics>
+    <tt:Frame UtcTime="2026-07-14T10:00:10.000Z" Source="FixtureCamera"/>
+  </tt:VideoAnalytics>
+</tt:MetadataStream>
