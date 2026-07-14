@@ -245,6 +245,12 @@ void rejectsInvalidZoneConfiguration() {
         service.updatePolygon("ZONE-001", {{0.0, 0.0}, {1.0, 1.0}}).status
         == configuration::ZoneConfigurationStatus::InvalidZone
     );
+
+    zones.saveSucceeds = false;
+    assert(
+        service.create(validZone()).status
+        == configuration::ZoneConfigurationStatus::RepositoryFailure
+    );
 }
 
 void createsAndUpdatesAccessPolicy() {
@@ -310,6 +316,12 @@ void rejectsInvalidAccessPolicyConfiguration() {
         service.create(invalidState).status
         == configuration::AccessPolicyConfigurationStatus::InvalidPolicy
     );
+
+    policies.saveSucceeds = false;
+    assert(
+        service.create(validPolicy()).status
+        == configuration::AccessPolicyConfigurationStatus::RepositoryFailure
+    );
 }
 
 void configuresWebhookTargets() {
@@ -365,6 +377,12 @@ void rejectsInvalidWebhookTargetConfiguration() {
     assert(
         service.disable("MISSING").status
         == configuration::WebhookTargetConfigurationStatus::TargetNotFound
+    );
+
+    targets.saveSucceeds = false;
+    assert(
+        service.add(validTarget()).status
+        == configuration::WebhookTargetConfigurationStatus::RepositoryFailure
     );
 }
 

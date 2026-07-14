@@ -19,7 +19,7 @@ public:
         const std::string& zoneId
     ) const = 0;
 
-    virtual bool save(const domain::Zone&) { return false; }
+    virtual bool save(const domain::Zone& zone) = 0;
 };
 
 }

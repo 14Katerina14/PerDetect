@@ -14,7 +14,7 @@ public:
     virtual std::optional<domain::AccessPolicy> findByZoneId(
         const std::string& zoneId
     ) const = 0;
-    virtual bool save(const domain::AccessPolicy&) { return false; }
+    virtual bool save(const domain::AccessPolicy& policy) = 0;
 };
 
 }

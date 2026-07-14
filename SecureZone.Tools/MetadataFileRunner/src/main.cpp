@@ -160,6 +160,11 @@ public:
         return std::nullopt;
     }
 
+    bool save(const domain::Zone& zone) override {
+        zone_ = zone;
+        return true;
+    }
+
 private:
     domain::Zone zone_;
 };
@@ -212,6 +217,11 @@ public:
         }
 
         return accessPolicy_;
+    }
+
+    bool save(const domain::AccessPolicy& accessPolicy) override {
+        accessPolicy_ = accessPolicy;
+        return true;
     }
 
 private:

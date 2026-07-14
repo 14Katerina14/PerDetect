@@ -147,6 +147,11 @@ public:
 
         return std::nullopt;
     }
+
+    bool save(const domain::Zone& value) override {
+        zone = value;
+        return true;
+    }
 };
 
 class FakeMachineRepository final : public repository::IMachineRepository {
@@ -184,6 +189,11 @@ public:
         }
 
         return std::nullopt;
+    }
+
+    bool save(const domain::AccessPolicy& value) override {
+        accessPolicy = value;
+        return true;
     }
 };
 
