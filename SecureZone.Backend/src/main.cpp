@@ -1,16 +1,12 @@
-#include <iostream>
-#include <optional>
 #include <string>
 
-#include "BackendConfig.h"
+#include <iostream>
+#include <optional>
+
+#include "BackendCompositionRoot.h"
+#include "BackendRuntimeOptions.h"
 
 namespace {
-
-struct BackendOptions {
-    std::string mode{"file"};
-    std::string configPath;
-    bool dryRun{};
-};
 
 void printUsage() {
     std::cout
@@ -23,8 +19,11 @@ void printUsage() {
         << "  --help, -h        Show this help message.\n";
 }
 
-std::optional<BackendOptions> parseArguments(int argc, char** argv) {
-    BackendOptions options{};
+std::optional<securezone::backend::BackendRuntimeOptions> parseArguments(
+    int argc,
+    char** argv
+) {
+    securezone::backend::BackendRuntimeOptions options{};
 
     for (int index = 1; index < argc; ++index) {
         const std::string argument = argv[index];
@@ -54,37 +53,6 @@ std::optional<BackendOptions> parseArguments(int argc, char** argv) {
     return options;
 }
 
-int run(const BackendOptions& options) {
-    std::cout
-        << "SecureZone Backend\n"
-        << "Mode: " << options.mode << '\n';
-
-    std::optional<securezone::backend::BackendConfig> config;
-    if (options.configPath.empty()) {
-        std::cout << "Config: not provided\n";
-    } else {
-        std::cout << "Config: " << options.configPath << '\n';
-        config = securezone::backend::loadBackendConfig(options.configPath);
-        std::cout
-            << "Config camera ID: " << config->cameraId << '\n'
-            << "Config metadata input mode: " << config->metadataInputMode << '\n'
-            << "Config metadata file: " << config->metadataFilePath << '\n'
-            << "Config Mongo database: " << config->mongoDatabaseName << '\n'
-            << "Config Mongo URI env: " << config->mongoConnectionStringEnv << '\n';
-    }
-
-    if (options.dryRun) {
-        std::cout << "Dry run: startup options are valid.\n";
-        return 0;
-    }
-
-    std::cout
-        << "Backend service skeleton is ready.\n"
-        << "Metadata processing, MongoDB wiring, and webhook delivery records "
-        << "will be added in later commits.\n";
-    return 0;
-}
-
 }
 
 int main(int argc, char** argv) {
@@ -93,5 +61,6 @@ int main(int argc, char** argv) {
         return argc == 1 ? 1 : 0;
     }
 
-    return run(*options);
+    const auto application = securezone::backend::composeBackendApplication(*options);
+    return application.run();
 }

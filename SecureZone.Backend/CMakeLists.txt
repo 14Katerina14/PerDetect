@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.20)
 project(SecureZoneBackend LANGUAGES CXX)
 
 add_executable(SecureZoneBackend
+    src/BackendApplication.cpp
+    src/BackendCompositionRoot.cpp
     src/BackendConfig.cpp
     src/main.cpp)
 

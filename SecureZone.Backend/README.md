@@ -9,6 +9,14 @@ webhook delivery records.
 The current version is a skeleton only. It validates command-line arguments and
 prints the selected runtime mode without connecting to MongoDB or XProtect yet.
 
+## Structure
+
+- `main.cpp` owns command-line parsing only.
+- `BackendCompositionRoot` loads configuration and creates the application.
+- `BackendApplication` owns the runtime flow that later commits will extend
+  with metadata input, service wiring, repositories, and webhook delivery
+  records.
+
 ## Build
 
 ```powershell
