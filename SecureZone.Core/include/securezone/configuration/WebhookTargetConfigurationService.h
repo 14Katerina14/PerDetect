@@ -1,4 +1,61 @@
 #pragma once
+
+#include <chrono>
 #include <string>
+#include <vector>
+
+#include "securezone/domain/WebhookTarget.h"
 #include "securezone/repository/IWebhookTargetRepository.h"
-namespace securezone::configuration { enum class WebhookTargetConfigurationStatus { Updated, InvalidTarget, TargetNotFound, RepositoryFailure }; struct WebhookTargetConfigurationResult { WebhookTargetConfigurationStatus status{}; bool succeeded()const{return status==WebhookTargetConfigurationStatus::Updated;} }; class WebhookTargetConfigurationService { public: explicit WebhookTargetConfigurationService(repository::IWebhookTargetRepository&r):r_{r}{} WebhookTargetConfigurationResult add(repository::WebhookTarget t)const{if(!valid(t))return{WebhookTargetConfigurationStatus::InvalidTarget};return{r_.save(t)?WebhookTargetConfigurationStatus::Updated:WebhookTargetConfigurationStatus::RepositoryFailure};} WebhookTargetConfigurationResult enable(const std::string&id,std::chrono::system_clock::time_point now)const{return set(id,repository::WebhookTargetStatus::Active,now);} WebhookTargetConfigurationResult disable(const std::string&id,std::chrono::system_clock::time_point now)const{return set(id,repository::WebhookTargetStatus::Inactive,now);} std::vector<repository::WebhookTarget> listActive()const{return r_.findActive();} private: static bool valid(const repository::WebhookTarget&t){return !t.targetId.empty()&&!t.name.empty()&&t.url.rfind("https://",0)==0;} WebhookTargetConfigurationResult set(const std::string&id,repository::WebhookTargetStatus s,std::chrono::system_clock::time_point now)const{auto t=r_.findByTargetId(id);if(!t)return{WebhookTargetConfigurationStatus::TargetNotFound};t->status=s;t->updatedAt=now;return{r_.save(*t)?WebhookTargetConfigurationStatus::Updated:WebhookTargetConfigurationStatus::RepositoryFailure};} repository::IWebhookTargetRepository&r_;}; }
+
+namespace securezone::configuration {
+
+enum class WebhookTargetConfigurationStatus {
+    Updated,
+    InvalidTarget,
+    TargetNotFound,
+    TargetAlreadyExists,
+    RepositoryFailure
+};
+
+struct WebhookTargetConfigurationResult {
+    WebhookTargetConfigurationStatus status{};
+
+    bool succeeded() const {
+        return status == WebhookTargetConfigurationStatus::Updated;
+    }
+};
+
+class WebhookTargetConfigurationService {
+public:
+    explicit WebhookTargetConfigurationService(
+        repository::IWebhookTargetRepository& targetRepository
+    );
+
+    WebhookTargetConfigurationResult add(
+        domain::WebhookTarget target,
+        std::chrono::system_clock::time_point now =
+            std::chrono::system_clock::now()
+    ) const;
+    WebhookTargetConfigurationResult enable(
+        const std::string& targetId,
+        std::chrono::system_clock::time_point now =
+            std::chrono::system_clock::now()
+    ) const;
+    WebhookTargetConfigurationResult disable(
+        const std::string& targetId,
+        std::chrono::system_clock::time_point now =
+            std::chrono::system_clock::now()
+    ) const;
+    std::vector<domain::WebhookTarget> listActive() const;
+
+private:
+    WebhookTargetConfigurationResult setStatus(
+        const std::string& targetId,
+        domain::WebhookTargetStatus status,
+        std::chrono::system_clock::time_point now
+    ) const;
+
+    repository::IWebhookTargetRepository& targetRepository_;
+};
+
+}
