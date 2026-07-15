@@ -28,8 +28,8 @@ target_include_directories(SecureZone.Infrastructure
 target_link_libraries(SecureZone.Infrastructure
     PUBLIC
         SecureZoneCore
-        mongo::bsoncxx_shared
-        mongo::mongocxx_shared
+        $<IF:$<TARGET_EXISTS:mongo::bsoncxx_static>,mongo::bsoncxx_static,mongo::bsoncxx_shared>
+        $<IF:$<TARGET_EXISTS:mongo::mongocxx_static>,mongo::mongocxx_static,mongo::mongocxx_shared>
 )
 
 target_compile_features(SecureZone.Infrastructure PUBLIC cxx_std_20)
