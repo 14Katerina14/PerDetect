@@ -13,6 +13,13 @@ ApiServer::ApiServer(ApiSettings settings, QrRoutes::CheckInHandler qrCheckInHan
     registerRoutes();
 }
 
+ApiServer::ApiServer(ApiSettings settings, ApiRouteHandlers handlers)
+    : settings_{std::move(settings)},
+      qrRoutes_{std::move(handlers.qrCheckInHandler)},
+      xprotectEventRoutes_{std::move(handlers.lineCrossingHandler)} {
+    registerRoutes();
+}
+
 const ApiSettings& ApiServer::settings() const {
     return settings_;
 }
