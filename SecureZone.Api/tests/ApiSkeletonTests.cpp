@@ -1,6 +1,7 @@
 #include "securezone/api/ApiApplication.h"
 #include "securezone/api/handlers/XProtectLineCrossingHandler.h"
 #include "securezone/api/http/Router.h"
+#include "securezone/api/runtime/ApiRuntimeComposition.h"
 #include "securezone/domain/PresenceSession.h"
 #include "securezone/domain/Zone.h"
 #include "securezone/xprotect/XProtectLineCrossingService.h"
@@ -48,6 +49,53 @@ domain::PresenceSession activePresenceSession() {
 
 std::optional<Clock::time_point> fixedXProtectEventTime(const std::string&) {
     return XProtectEventTime;
+}
+
+domain::Employee activeEmployee() {
+    domain::Employee employee{};
+    employee.employeeId = "EMP-001";
+    employee.fullName = "Ivan Petrov";
+    employee.roles = {"maintenance"};
+    employee.status = domain::EmployeeStatus::Active;
+    return employee;
+}
+
+domain::AppUser scannerUser() {
+    domain::AppUser appUser{};
+    appUser.userId = "APP-SCANNER-001";
+    appUser.username = "scanner";
+    appUser.role = domain::AppUserRole::Scanner;
+    appUser.status = domain::AppUserStatus::Active;
+    return appUser;
+}
+
+Clock::time_point compositionEventTime() {
+    return *XProtectLineCrossingHandler::parseReceivedAt("2026-07-15T10:30:00Z");
+}
+
+domain::PresenceSession activeCompositionPresenceSession() {
+    auto session = activePresenceSession();
+    session.startedAt = compositionEventTime() - std::chrono::minutes{5};
+    session.expiresAt = compositionEventTime() + std::chrono::minutes{5};
+    return session;
+}
+
+ApiRuntimeConfig compositionConfig(bool includePresenceSession) {
+    ApiRuntimeConfig config{};
+    config.employees = {activeEmployee()};
+    config.appUsers = {scannerUser()};
+    config.zones = {mappedXProtectZone()};
+    config.xprotectZoneMappings = {{
+        WiseAiLineCrossingEvent,
+        CameraSource,
+        "ZONE-001"
+    }};
+
+    if (includePresenceSession) {
+        config.presenceSessions = {activeCompositionPresenceSession()};
+    }
+
+    return config;
 }
 
 void healthRouteReturnsOk() {
@@ -480,6 +528,55 @@ void xprotectLineCrossingReturnsServerErrorForHandlerError() {
     assert(response.body.find(R"("status":"handler_error")") != std::string::npos);
 }
 
+void runtimeCompositionWiresQrCheckInHandler() {
+    const ApiRuntimeComposition composition{compositionConfig(false)};
+    const auto app = composition.createApplication();
+
+    const auto response = app.handle({
+        "POST",
+        "/api/qr/check-in",
+        R"({"employeeId":"EMP-001","zoneId":"ZONE-001","scannedByUserId":"APP-SCANNER-001"})",
+        {}
+    });
+
+    assert(response.statusCode == 201);
+    assert(response.body.find(R"("accepted":true)") != std::string::npos);
+    assert(response.body.find(R"("status":"started")") != std::string::npos);
+}
+
+void runtimeCompositionMapsXProtectEventToViolationWithoutPresence() {
+    const ApiRuntimeComposition composition{compositionConfig(false)};
+    const auto app = composition.createApplication();
+
+    const auto response = app.handle({
+        "POST",
+        "/api/xprotect/line-crossing",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
+        {}
+    });
+
+    assert(response.statusCode == 200);
+    assert(response.body.find(R"("decision":"violation")") != std::string::npos);
+    assert(response.body.find(R"("zoneId":"ZONE-001")") != std::string::npos);
+}
+
+void runtimeCompositionMapsXProtectEventToAllowedWithActivePresence() {
+    const ApiRuntimeComposition composition{compositionConfig(true)};
+    const auto app = composition.createApplication();
+
+    const auto response = app.handle({
+        "POST",
+        "/api/xprotect/line-crossing",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
+        {}
+    });
+
+    assert(response.statusCode == 200);
+    assert(response.body.find(R"("decision":"allowed")") != std::string::npos);
+    assert(response.body.find(R"("sessionId":"SESSION-001")") != std::string::npos);
+    assert(response.body.find(R"("employeeId":"EMP-001")") != std::string::npos);
+}
+
 void applicationKeepsSettingsAndStartupSummary() {
     ApiSettings settings{};
     settings.host = "127.0.0.1";
@@ -549,4 +646,7 @@ int main() {
     xprotectLineCrossingAllowsActivePresence();
     xprotectLineCrossingReturnsNotFoundForUnmappedZone();
     xprotectLineCrossingReturnsServerErrorForHandlerError();
+    runtimeCompositionWiresQrCheckInHandler();
+    runtimeCompositionMapsXProtectEventToViolationWithoutPresence();
+    runtimeCompositionMapsXProtectEventToAllowedWithActivePresence();
 }

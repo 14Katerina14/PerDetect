@@ -1,5 +1,7 @@
 #include "securezone/api/ApiApplication.h"
 
+#include "securezone/api/runtime/ApiRuntimeComposition.h"
+
 #include <sstream>
 #include <utility>
 
@@ -50,7 +52,9 @@ std::string ApiApplication::startupSummary() const {
 }
 
 ApiApplication createApiApplicationFromEnvironment() {
-    return ApiApplication{loadApiSettingsFromEnvironment(), {}};
+    ApiRuntimeConfig config{};
+    config.apiSettings = loadApiSettingsFromEnvironment();
+    return createComposedApiApplication(std::move(config));
 }
 
 }

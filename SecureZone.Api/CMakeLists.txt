@@ -12,6 +12,7 @@ add_library(SecureZoneApi
     src/routes/HealthRoutes.cpp
     src/routes/QrRoutes.cpp
     src/routes/XProtectEventRoutes.cpp
+    src/runtime/ApiRuntimeComposition.cpp
 )
 
 target_compile_features(SecureZoneApi PUBLIC cxx_std_17)
