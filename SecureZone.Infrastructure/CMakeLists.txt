@@ -33,3 +33,30 @@ target_link_libraries(SecureZone.Infrastructure
 )
 
 target_compile_features(SecureZone.Infrastructure PUBLIC cxx_std_20)
+
+add_executable(
+    MongoAppUserMapperTests
+    tests/mongodb/MongoAppUserMapperTests.cpp
+)
+target_link_libraries(
+    MongoAppUserMapperTests
+    PRIVATE
+        SecureZone.Infrastructure
+)
+add_test(NAME MongoAppUserMapperTests COMMAND MongoAppUserMapperTests)
+
+add_executable(
+    MongoAppUserRepositoryTests
+    tests/mongodb/MongoAppUserRepositoryTests.cpp
+)
+target_link_libraries(
+    MongoAppUserRepositoryTests
+    PRIVATE
+        SecureZone.Infrastructure
+)
+add_test(NAME MongoAppUserRepositoryTests COMMAND MongoAppUserRepositoryTests)
+set_tests_properties(
+    MongoAppUserRepositoryTests
+    PROPERTIES
+        SKIP_RETURN_CODE 77
+)

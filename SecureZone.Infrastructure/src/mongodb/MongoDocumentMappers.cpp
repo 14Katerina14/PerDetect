@@ -5,6 +5,7 @@
 #include <bsoncxx/types.hpp>
 
 #include <chrono>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -138,7 +139,13 @@ domain::EmployeeStatus employeeStatusFromString(const std::string& value) {
     return domain::EmployeeStatus::Inactive;
 }
 
-domain::AppUserRole appUserRoleFromString(const std::string& value) {
+std::optional<domain::AppUserRole> appUserRoleFromString(
+    const std::string& value
+) {
+    if (value == "scanner") {
+        return domain::AppUserRole::Scanner;
+    }
+
     if (value == "manager") {
         return domain::AppUserRole::Manager;
     }
@@ -147,13 +154,21 @@ domain::AppUserRole appUserRoleFromString(const std::string& value) {
         return domain::AppUserRole::Admin;
     }
 
-    return domain::AppUserRole::Scanner;
+    return std::nullopt;
 }
 
-domain::AppUserStatus appUserStatusFromString(const std::string& value) {
-    return value == "active"
-        ? domain::AppUserStatus::Active
-        : domain::AppUserStatus::Inactive;
+std::optional<domain::AppUserStatus> appUserStatusFromString(
+    const std::string& value
+) {
+    if (value == "active") {
+        return domain::AppUserStatus::Active;
+    }
+
+    if (value == "inactive") {
+        return domain::AppUserStatus::Inactive;
+    }
+
+    return std::nullopt;
 }
 
 domain::ZoneType zoneTypeFromString(const std::string& value) {
@@ -250,13 +265,30 @@ domain::Employee mapEmployeeDocument(bsoncxx::document::view document) {
     return employee;
 }
 
-domain::AppUser mapAppUserDocument(bsoncxx::document::view document) {
-    domain::AppUser user{};
-    user.userId = requiredString(document, "userId");
-    user.username = requiredString(document, "username");
-    user.role = appUserRoleFromString(requiredString(document, "role"));
-    user.status = appUserStatusFromString(requiredString(document, "status"));
-    return user;
+std::optional<domain::AppUser> mapAppUserDocument(
+    bsoncxx::document::view document
+) {
+    try {
+        domain::AppUser user{};
+        user.userId = requiredString(document, "userId");
+        user.username = requiredString(document, "username");
+
+        if (user.userId.empty() || user.username.empty()) {
+            return std::nullopt;
+        }
+
+        const auto role = appUserRoleFromString(requiredString(document, "role"));
+        const auto status = appUserStatusFromString(requiredString(document, "status"));
+        if (!role || !status) {
+            return std::nullopt;
+        }
+
+        user.role = *role;
+        user.status = *status;
+        return user;
+    } catch (const std::exception&) {
+        return std::nullopt;
+    }
 }
 
 domain::Zone mapZoneDocument(bsoncxx::document::view document) {

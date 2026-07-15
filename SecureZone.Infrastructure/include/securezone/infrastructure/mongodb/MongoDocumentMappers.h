@@ -2,6 +2,8 @@
 
 #include <bsoncxx/document/view.hpp>
 
+#include <optional>
+
 #include "securezone/domain/AccessPolicy.h"
 #include "securezone/domain/Alarm.h"
 #include "securezone/domain/AppUser.h"
@@ -15,7 +17,9 @@
 namespace securezone::infrastructure::mongodb {
 
 domain::Employee mapEmployeeDocument(bsoncxx::document::view document);
-domain::AppUser mapAppUserDocument(bsoncxx::document::view document);
+std::optional<domain::AppUser> mapAppUserDocument(
+    bsoncxx::document::view document
+);
 domain::Zone mapZoneDocument(bsoncxx::document::view document);
 domain::MachineState mapMachineDocument(bsoncxx::document::view document);
 domain::AccessPolicy mapAccessPolicyDocument(bsoncxx::document::view document);
