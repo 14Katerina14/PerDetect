@@ -5,6 +5,7 @@
 #include "securezone/infrastructure/mongodb/MongoDbSettingsProvider.h"
 #include "securezone/infrastructure/mongodb/MongoRepositoryProvider.h"
 #include "securezone/presence/PresenceSessionService.h"
+#include "securezone/identity/CameraIdentityService.h"
 #include "securezone/qr/QrCheckInService.h"
 #include "securezone/xprotect/XProtectLineCrossingService.h"
 
@@ -49,9 +50,13 @@ struct MongoApiRuntimeComposition::State {
           zones{repositoryProvider.zoneRepository()},
           qrCheckins{repositoryProvider.qrCheckinRepository()},
           presenceSessions{repositoryProvider.presenceSessionRepository()},
+          cameraObjectTracks{repositoryProvider.cameraObjectTrackRepository()},
+          trackIdentityBindings{repositoryProvider.trackIdentityBindingRepository()},
+          cameraIdentityService{cameraObjectTracks, trackIdentityBindings},
           presenceService{employees, appUsers, zones, qrCheckins, presenceSessions},
           qrService{
               presenceService,
+              cameraIdentityService,
               [] { return qr::QrCheckInService::Clock::now(); },
               this->config.apiRuntime.qrPresenceDuration
           },
@@ -59,8 +64,9 @@ struct MongoApiRuntimeComposition::State {
               [this](const xprotect::XProtectLineCrossingCommand& command) {
                   return resolveXProtectZone(command);
               },
-              [this](const domain::Zone& zone, xprotect::XProtectLineCrossingService::Clock::time_point at) {
-                  return presenceSessions.findActiveByZoneAt(zone.zoneId, at);
+              [this](const std::string& cameraId, const std::string& objectId,
+                     xprotect::XProtectLineCrossingService::Clock::time_point at) {
+                  return cameraIdentityService.resolve(cameraId, objectId, at);
               }
           } {
     }
@@ -91,6 +97,9 @@ struct MongoApiRuntimeComposition::State {
     infrastructure::mongodb::repositories::MongoZoneRepository zones;
     infrastructure::mongodb::repositories::MongoQrCheckinRepository qrCheckins;
     infrastructure::mongodb::repositories::MongoPresenceSessionRepository presenceSessions;
+    infrastructure::mongodb::repositories::MongoCameraObjectTrackRepository cameraObjectTracks;
+    infrastructure::mongodb::repositories::MongoTrackIdentityBindingRepository trackIdentityBindings;
+    identity::CameraIdentityService cameraIdentityService;
     presence::PresenceSessionService presenceService;
     qr::QrCheckInService qrService;
     xprotect::XProtectLineCrossingService xprotectService;
@@ -111,7 +120,16 @@ ApiApplication MongoApiRuntimeComposition::createApplication() const {
 ApiRouteHandlers MongoApiRuntimeComposition::createRouteHandlers() const {
     return ApiRouteHandlers{
         createQrCheckInHandler(),
-        createXProtectLineCrossingHandler()
+        createXProtectLineCrossingHandler(),
+        createCameraObjectObservationHandler()
+    };
+}
+
+CameraObjectRoutes::ObservationHandler
+MongoApiRuntimeComposition::createCameraObjectObservationHandler() const {
+    const auto state = state_;
+    return [state](const identity::CameraObjectObservation& observation) {
+        return state->cameraIdentityService.observe(observation);
     };
 }
 

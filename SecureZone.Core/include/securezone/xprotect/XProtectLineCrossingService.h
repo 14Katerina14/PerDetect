@@ -2,6 +2,7 @@
 
 #include "securezone/domain/PresenceSession.h"
 #include "securezone/domain/Zone.h"
+#include "securezone/domain/TrackIdentityBinding.h"
 
 #include <chrono>
 #include <functional>
@@ -14,6 +15,9 @@ struct XProtectLineCrossingCommand {
     std::string eventName;
     std::string sourceName;
     std::chrono::system_clock::time_point receivedAt{};
+    std::string cameraId;
+    std::string objectId;
+    std::string action;
 };
 
 struct XProtectLineCrossingDecision {
@@ -34,10 +38,19 @@ public:
         const domain::Zone&,
         Clock::time_point
     )>;
+    using IdentityBindingResolver = std::function<std::optional<domain::TrackIdentityBinding>(
+        const std::string&,
+        const std::string&,
+        Clock::time_point
+    )>;
 
     XProtectLineCrossingService(
         ZoneResolver zoneResolver,
         ActivePresenceResolver activePresenceResolver
+    );
+    XProtectLineCrossingService(
+        ZoneResolver zoneResolver,
+        IdentityBindingResolver identityBindingResolver
     );
 
     XProtectLineCrossingDecision evaluate(const XProtectLineCrossingCommand& command) const;
@@ -45,6 +58,7 @@ public:
 private:
     ZoneResolver zoneResolver_;
     ActivePresenceResolver activePresenceResolver_;
+    IdentityBindingResolver identityBindingResolver_;
 };
 
 }

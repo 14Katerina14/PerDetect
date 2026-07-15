@@ -63,6 +63,17 @@ XProtectLineCrossingDecision allowed(
     };
 }
 
+XProtectLineCrossingDecision allowed(
+    const domain::Zone& zone,
+    const domain::TrackIdentityBinding& binding
+) {
+    return XProtectLineCrossingDecision{
+        true, "processed", "allowed", zone.zoneId,
+        binding.presenceSessionId, binding.employeeId,
+        "Active QR identity binding found for camera object."
+    };
+}
+
 }
 
 XProtectLineCrossingService::XProtectLineCrossingService(
@@ -72,6 +83,13 @@ XProtectLineCrossingService::XProtectLineCrossingService(
     activePresenceResolver_{std::move(activePresenceResolver)} {
 }
 
+XProtectLineCrossingService::XProtectLineCrossingService(
+    ZoneResolver zoneResolver,
+    IdentityBindingResolver identityBindingResolver
+) : zoneResolver_{std::move(zoneResolver)},
+    identityBindingResolver_{std::move(identityBindingResolver)} {
+}
+
 XProtectLineCrossingDecision XProtectLineCrossingService::evaluate(
     const XProtectLineCrossingCommand& command
 ) const {
@@ -79,7 +97,7 @@ XProtectLineCrossingDecision XProtectLineCrossingService::evaluate(
         return invalidRequest("eventName and sourceName are required.");
     }
 
-    if (!zoneResolver_ || !activePresenceResolver_) {
+    if (!zoneResolver_ || (!activePresenceResolver_ && !identityBindingResolver_)) {
         return XProtectLineCrossingDecision{
             false,
             "handler_error",
@@ -94,6 +112,20 @@ XProtectLineCrossingDecision XProtectLineCrossingService::evaluate(
     const auto zone = zoneResolver_(command);
     if (!zone.has_value() || zone->status != domain::ZoneStatus::Active) {
         return zoneNotFound();
+    }
+
+    if (identityBindingResolver_) {
+        if (command.cameraId.empty() || command.objectId.empty()) {
+            return violation(*zone, "Line crossing event has no cameraId or ObjectId identity evidence.");
+        }
+
+        const auto binding = identityBindingResolver_(
+            command.cameraId, command.objectId, command.receivedAt
+        );
+        if (!binding.has_value() || !binding->isActiveAt(command.receivedAt)) {
+            return violation(*zone, "Camera object has no active QR identity binding.");
+        }
+        return allowed(*zone, *binding);
     }
 
     const auto activePresence = activePresenceResolver_(*zone, command.receivedAt);

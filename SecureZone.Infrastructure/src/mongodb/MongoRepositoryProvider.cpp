@@ -13,6 +13,8 @@ constexpr const char* PresenceSessionsCollection = "presence_sessions";
 constexpr const char* QrCheckinsCollection = "qr_checkins";
 constexpr const char* WebhookTargetsCollection = "webhook_targets";
 constexpr const char* ZonesCollection = "zones";
+constexpr const char* CameraObjectTracksCollection = "camera_object_tracks";
+constexpr const char* TrackIdentityBindingsCollection = "track_identity_bindings";
 
 }
 
@@ -72,6 +74,14 @@ repositories::MongoWebhookTargetRepository MongoRepositoryProvider::webhookTarge
     return repositories::MongoWebhookTargetRepository{
         client_.database()[WebhookTargetsCollection]
     };
+}
+
+repositories::MongoCameraObjectTrackRepository MongoRepositoryProvider::cameraObjectTrackRepository() {
+    return repositories::MongoCameraObjectTrackRepository{client_.database()[CameraObjectTracksCollection]};
+}
+
+repositories::MongoTrackIdentityBindingRepository MongoRepositoryProvider::trackIdentityBindingRepository() {
+    return repositories::MongoTrackIdentityBindingRepository{client_.database()[TrackIdentityBindingsCollection]};
 }
 
 }

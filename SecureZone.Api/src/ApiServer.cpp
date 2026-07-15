@@ -18,7 +18,8 @@ ApiServer::ApiServer(ApiSettings settings, QrRoutes::CheckInHandler qrCheckInHan
 ApiServer::ApiServer(ApiSettings settings, ApiRouteHandlers handlers)
     : settings_{std::move(settings)},
       qrRoutes_{std::move(handlers.qrCheckInHandler)},
-      xprotectEventRoutes_{std::move(handlers.lineCrossingHandler), settings_.xprotectApiKey} {
+      xprotectEventRoutes_{std::move(handlers.lineCrossingHandler), settings_.xprotectApiKey},
+      cameraObjectRoutes_{std::move(handlers.cameraObjectObservationHandler), settings_.xprotectApiKey} {
     registerRoutes();
 }
 
@@ -41,6 +42,10 @@ void ApiServer::registerRoutes() {
 
     router_.post("/api/xprotect/line-crossing", [this](const HttpRequest& request) {
         return xprotectEventRoutes_.handleLineCrossing(request);
+    });
+
+    router_.post("/api/xprotect/object-observations", [this](const HttpRequest& request) {
+        return cameraObjectRoutes_.handleObservation(request);
     });
 }
 

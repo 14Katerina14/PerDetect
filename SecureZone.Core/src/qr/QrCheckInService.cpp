@@ -32,7 +32,9 @@ QrCheckInResult makeResult(
         result.accepted(),
         std::string{toQrCheckInStatus(result.status)},
         result.sessionId,
-        std::string{toQrCheckInMessage(result.status)}
+        std::string{toQrCheckInMessage(result.status)},
+        {},
+        {}
     };
 }
 
@@ -107,14 +109,31 @@ QrCheckInService::QrCheckInService(
     presenceDuration_{presenceDuration} {
 }
 
+QrCheckInService::QrCheckInService(
+    presence::PresenceSessionService& presenceSessionService,
+    identity::CameraIdentityService& cameraIdentityService,
+    NowProvider nowProvider,
+    std::chrono::minutes presenceDuration
+) : presenceSessionService_{presenceSessionService},
+    nowProvider_{std::move(nowProvider)},
+    presenceDuration_{presenceDuration},
+    cameraIdentityService_{&cameraIdentityService} {
+}
+
 QrCheckInResult QrCheckInService::checkIn(const QrCheckInCommand& command) {
     if (!hasRequiredFields(command)) {
         return QrCheckInResult{
             false,
             "invalid_request",
             {},
-            "employeeId, zoneId and scannedByUserId are required."
+            "employeeId, zoneId and scannedByUserId are required.",
+            {},
+            {}
         };
+    }
+
+    if (cameraIdentityService_ != nullptr && command.cameraId.empty()) {
+        return {false, "invalid_request", {}, "cameraId is required for camera identity binding.", {}, {}};
     }
 
     const auto scannedAt = nowProvider_();
@@ -127,7 +146,30 @@ QrCheckInResult QrCheckInService::checkIn(const QrCheckInCommand& command) {
     request.scannedAt = scannedAt;
     request.expiresAt = scannedAt + presenceDuration_;
 
-    return makeResult(presenceSessionService_.startFromQrCheckin(request));
+    auto result = makeResult(presenceSessionService_.startFromQrCheckin(request));
+    if (!result.accepted || cameraIdentityService_ == nullptr) {
+        return result;
+    }
+
+    const auto binding = cameraIdentityService_->bindLatestHuman({
+        command.cameraId,
+        command.employeeId,
+        request.checkinId,
+        result.sessionId,
+        scannedAt,
+        request.expiresAt
+    });
+    if (!binding.bound) {
+        if (result.status == "started") {
+            presenceSessionService_.endSession(result.sessionId, scannedAt);
+        }
+        return {false, binding.status, result.sessionId,
+            "No recent unbound Human object was found for this camera.", {}, {}};
+    }
+
+    result.objectId = binding.objectId;
+    result.bindingId = binding.bindingId;
+    return result;
 }
 
 }

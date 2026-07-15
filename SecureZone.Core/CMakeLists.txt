@@ -11,6 +11,7 @@ add_library(SecureZoneCore
     src/decision/DecisionContextLoader.cpp
     src/decision/DecisionEngine.cpp
     src/identity/RolePermissionService.cpp
+    src/identity/CameraIdentityService.cpp
     src/machine/MachineStatusService.cpp
     src/presence/PresenceSessionService.cpp
     src/qr/QrCheckInService.cpp
@@ -32,6 +33,7 @@ set(SECUREZONE_CORE_TESTS
     WebhookNotificationServiceTests
     WebhookDeliveryServiceTests
     XProtectLineCrossingServiceTests
+    CameraIdentityServiceTests
 )
 
 foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
@@ -43,6 +45,8 @@ foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
         set(test_source tests/configuration/ConfigurationServicesTests.cpp)
     elseif(test_name STREQUAL "XProtectLineCrossingServiceTests")
         set(test_source tests/xprotect/XProtectLineCrossingServiceTests.cpp)
+    elseif(test_name STREQUAL "CameraIdentityServiceTests")
+        set(test_source tests/identity/CameraIdentityServiceTests.cpp)
     else()
         set(test_source tests/${test_name}.cpp)
     endif()

@@ -105,6 +105,9 @@ HttpResponse XProtectEventRoutes::handleLineCrossing(const HttpRequest& request)
          << jsonEscape(result.event->eventName)
          << R"(","sourceName":")"
          << jsonEscape(result.event->sourceName)
+         << R"(","cameraId":")" << jsonEscape(result.event->cameraId)
+         << R"(","objectId":")" << jsonEscape(result.event->objectId)
+         << R"(","action":")" << jsonEscape(result.event->action)
          << R"(","receivedAt":")"
          << jsonEscape(result.event->receivedAt)
          << R"("})";

@@ -8,6 +8,7 @@ namespace SecureZone.XProtectPlugin
         private const int DefaultTimeoutSeconds = 5;
 
         public Uri ApiEndpoint { get; private set; }
+        public Uri ObjectObservationEndpoint { get; private set; }
         public string ApiKey { get; private set; }
         public TimeSpan RequestTimeout { get; private set; }
 
@@ -24,6 +25,7 @@ namespace SecureZone.XProtectPlugin
             return new SecureZonePluginSettings
             {
                 ApiEndpoint = endpoint,
+                ObjectObservationEndpoint = new Uri(endpoint, "/api/xprotect/object-observations"),
                 ApiKey = ReadEnvironmentVariable("SECUREZONE_XPROTECT_API_KEY", string.Empty),
                 RequestTimeout = TimeSpan.FromSeconds(ReadPositiveInt("SECUREZONE_API_TIMEOUT_SECONDS", DefaultTimeoutSeconds))
             };

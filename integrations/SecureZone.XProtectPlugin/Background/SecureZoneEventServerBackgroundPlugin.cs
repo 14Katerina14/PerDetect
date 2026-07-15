@@ -5,6 +5,7 @@ using VideoOS.Platform;
 using VideoOS.Platform.Background;
 using VideoOS.Platform.Data;
 using VideoOS.Platform.Messaging;
+using SecureZone.XProtectPlugin.Metadata;
 
 namespace SecureZone.XProtectPlugin.Background
 {
@@ -13,6 +14,8 @@ namespace SecureZone.XProtectPlugin.Background
         private object eventReceiver;
         private SecureZoneDecisionClient decisionClient;
         private SecureZoneViolationEventPublisher violationPublisher;
+        private RecentLineCrossingCache lineCrossingCache;
+        private WiseAiMetadataListener metadataListener;
 
         public override Guid Id
         {
@@ -29,6 +32,9 @@ namespace SecureZone.XProtectPlugin.Background
             SecureZonePluginSettings settings = SecureZonePluginSettings.Load();
             decisionClient = new SecureZoneDecisionClient(settings);
             violationPublisher = new SecureZoneViolationEventPublisher();
+            lineCrossingCache = new RecentLineCrossingCache();
+            metadataListener = new WiseAiMetadataListener(decisionClient, lineCrossingCache);
+            metadataListener.Start();
 
             eventReceiver = EnvironmentManager.Instance.RegisterReceiver(
                 NewEventHandler,
@@ -50,6 +56,11 @@ namespace SecureZone.XProtectPlugin.Background
                 eventReceiver = null;
             }
 
+            if (metadataListener != null)
+            {
+                metadataListener.Dispose();
+                metadataListener = null;
+            }
             if (decisionClient != null)
             {
                 decisionClient.Dispose();
@@ -88,8 +99,18 @@ namespace SecureZone.XProtectPlugin.Background
                 ReceivedAtUtc = header.Timestamp == DateTime.MinValue
                     ? DateTime.UtcNow
                     : header.Timestamp.ToUniversalTime(),
+                CameraId = header.Source == null || header.Source.FQID == null
+                    ? string.Empty
+                    : header.Source.FQID.ObjectId.ToString("D"),
                 Source = header.Source
             };
+            RawLineCrossing raw = lineCrossingCache.TakeClosest(snapshot.ReceivedAtUtc, snapshot.CameraId);
+            if (raw != null)
+            {
+                snapshot.CameraId = raw.CameraId;
+                snapshot.ObjectId = raw.ObjectId;
+                snapshot.Action = raw.Action;
+            }
 
             Task.Run(() => ProcessLineCrossingAsync(snapshot));
             return null;

@@ -605,7 +605,10 @@ void xprotectLineCrossingReturnsNotFoundForUnmappedZone() {
 }
 
 void xprotectLineCrossingReturnsServerErrorForHandlerError() {
-    xprotect::XProtectLineCrossingService service{{}, {}};
+    xprotect::XProtectLineCrossingService service{
+        xprotect::XProtectLineCrossingService::ZoneResolver{},
+        xprotect::XProtectLineCrossingService::ActivePresenceResolver{}
+    };
 
     ApiServer server{
         {},
@@ -719,6 +722,52 @@ void xprotectLineCrossingRejectsUnsupportedEvents() {
     assert(response.body.find("unsupported_xprotect_event") != std::string::npos);
 }
 
+void cameraObjectObservationRouteForwardsIdentityEvidence() {
+    bool called = false;
+    ApiServer server{
+        {},
+        ApiRouteHandlers{
+            {},
+            {},
+            [&called](const securezone::identity::CameraObjectObservation& observation) {
+                called = true;
+                assert(observation.cameraId == "CAM-001");
+                assert(observation.objectId == "OBJECT-42");
+                assert(observation.objectType == "Human");
+                return true;
+            }
+        }
+    };
+
+    const auto response = server.handle({
+        "POST",
+        "/api/xprotect/object-observations",
+        R"({"cameraId":"CAM-001","objectId":"OBJECT-42","objectType":"Human","observedAt":"2026-07-16T00:30:00Z"})",
+        {}
+    });
+
+    assert(called);
+    assert(response.statusCode == 202);
+    assert(response.body.find("observed") != std::string::npos);
+}
+
+void cameraObjectObservationRouteRejectsIncompleteEvidence() {
+    ApiServer server{
+        {},
+        ApiRouteHandlers{{}, {}, [](const securezone::identity::CameraObjectObservation&) { return true; }}
+    };
+
+    const auto response = server.handle({
+        "POST",
+        "/api/xprotect/object-observations",
+        R"({"cameraId":"CAM-001","objectType":"Human","observedAt":"2026-07-16T00:30:00Z"})",
+        {}
+    });
+
+    assert(response.statusCode == 400);
+    assert(response.body.find("invalid_request") != std::string::npos);
+}
+
 }
 
 int main() {
@@ -750,4 +799,6 @@ int main() {
     runtimeCompositionWiresQrCheckInHandler();
     runtimeCompositionMapsXProtectEventToViolationWithoutPresence();
     runtimeCompositionMapsXProtectEventToAllowedWithActivePresence();
+    cameraObjectObservationRouteForwardsIdentityEvidence();
+    cameraObjectObservationRouteRejectsIncompleteEvidence();
 }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "securezone/presence/PresenceSessionService.h"
+#include "securezone/identity/CameraIdentityService.h"
 
 #include <chrono>
 #include <functional>
@@ -13,6 +14,7 @@ struct QrCheckInCommand {
     std::string employeeId;
     std::string zoneId;
     std::string scannedByUserId;
+    std::string cameraId;
 };
 
 struct QrCheckInResult {
@@ -20,6 +22,8 @@ struct QrCheckInResult {
     std::string status;
     std::string sessionId;
     std::string message;
+    std::string objectId;
+    std::string bindingId;
 };
 
 std::string_view toQrCheckInStatus(
@@ -41,12 +45,20 @@ public:
         std::chrono::minutes presenceDuration = std::chrono::minutes{2}
     );
 
+    QrCheckInService(
+        presence::PresenceSessionService& presenceSessionService,
+        identity::CameraIdentityService& cameraIdentityService,
+        NowProvider nowProvider = [] { return Clock::now(); },
+        std::chrono::minutes presenceDuration = std::chrono::minutes{2}
+    );
+
     QrCheckInResult checkIn(const QrCheckInCommand& command);
 
 private:
     presence::PresenceSessionService& presenceSessionService_;
     NowProvider nowProvider_;
     std::chrono::minutes presenceDuration_;
+    identity::CameraIdentityService* cameraIdentityService_{};
 };
 
 }
