@@ -5,6 +5,8 @@
 #include <bsoncxx/types.hpp>
 
 #include <chrono>
+#include <cstddef>
+#include <optional>
 #include <utility>
 
 #include "securezone/infrastructure/mongodb/MongoDocumentMappers.h"
@@ -45,9 +47,10 @@ bsoncxx::types::b_date toBsonDate(Clock::time_point timePoint) {
     };
 }
 
+template <std::size_t FieldNameSize>
 void appendOptionalString(
     bsoncxx::builder::basic::document& document,
-    const char* fieldName,
+    const char (&fieldName)[FieldNameSize],
     const std::string& value
 ) {
     if (value.empty()) {
@@ -58,9 +61,10 @@ void appendOptionalString(
     document.append(bsoncxx::builder::basic::kvp(fieldName, value));
 }
 
+template <std::size_t FieldNameSize>
 void appendOptionalDate(
     bsoncxx::builder::basic::document& document,
-    const char* fieldName,
+    const char (&fieldName)[FieldNameSize],
     Clock::time_point value
 ) {
     if (value == Clock::time_point{}) {
@@ -69,6 +73,20 @@ void appendOptionalDate(
     }
 
     document.append(bsoncxx::builder::basic::kvp(fieldName, toBsonDate(value)));
+}
+
+template <std::size_t FieldNameSize>
+void appendOptionalDate(
+    bsoncxx::builder::basic::document& document,
+    const char (&fieldName)[FieldNameSize],
+    const std::optional<Clock::time_point>& value
+) {
+    if (!value) {
+        document.append(bsoncxx::builder::basic::kvp(fieldName, bsoncxx::types::b_null{}));
+        return;
+    }
+
+    document.append(bsoncxx::builder::basic::kvp(fieldName, toBsonDate(*value)));
 }
 
 bsoncxx::document::value toAlarmDocument(const domain::Alarm& alarm) {

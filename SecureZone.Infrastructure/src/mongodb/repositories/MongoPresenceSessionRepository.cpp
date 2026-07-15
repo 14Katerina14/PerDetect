@@ -5,6 +5,7 @@
 #include <bsoncxx/types.hpp>
 
 #include <chrono>
+#include <cstddef>
 #include <utility>
 
 #include "securezone/infrastructure/mongodb/MongoDocumentMappers.h"
@@ -39,9 +40,10 @@ bsoncxx::types::b_date toBsonDate(Clock::time_point timePoint) {
     };
 }
 
+template <std::size_t FieldNameSize>
 void appendOptionalDate(
     bsoncxx::builder::basic::document& document,
-    const char* fieldName,
+    const char (&fieldName)[FieldNameSize],
     Clock::time_point value
 ) {
     if (value == Clock::time_point{}) {
