@@ -36,6 +36,7 @@ ApiSettings loadApiSettingsFromEnvironment() {
     settings.port = envInt("SECUREZONE_API_PORT", settings.port);
     settings.mongoConnectionString = envString("SECUREZONE_MONGO_URI");
     settings.mongoDatabaseName = envString("SECUREZONE_MONGO_DATABASE", settings.mongoDatabaseName);
+    settings.xprotectApiKey = envString("SECUREZONE_XPROTECT_API_KEY");
     settings.qrPresenceDuration = std::chrono::minutes{
         envInt("SECUREZONE_QR_PRESENCE_MINUTES", static_cast<int>(settings.qrPresenceDuration.count()))
     };

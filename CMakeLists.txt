@@ -8,7 +8,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 enable_testing()
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(SecureZoneRuntimeDependencies)
+
 option(SECUREZONE_BUILD_MONGODB_INFRA "Build MongoDB infrastructure components" ON)
+option(
+    SECUREZONE_BUILD_HTTP_RUNTIME
+    "Build the production HTTP listener"
+    ${SECUREZONE_BUILD_MONGODB_INFRA}
+)
 
 add_subdirectory(SecureZone.Core)
 

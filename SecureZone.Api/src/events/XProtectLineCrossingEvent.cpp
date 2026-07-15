@@ -37,6 +37,7 @@ XProtectLineCrossingParseResult parseXProtectLineCrossingEvent(const std::string
     }
 
     XProtectLineCrossingEvent event{};
+    event.eventId = readJsonStringField(body, "eventId").value_or("");
     event.eventName = *eventName;
     event.sourceName = *sourceName;
     event.receivedAt = readJsonStringField(body, "receivedAt").value_or("");

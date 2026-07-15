@@ -4,7 +4,10 @@
 #include <cctype>
 #include <ctime>
 #include <iomanip>
+#include <mutex>
+#include <regex>
 #include <sstream>
+#include <unordered_map>
 #include <utility>
 
 namespace securezone::api {
@@ -45,16 +48,33 @@ XProtectLineCrossingResult toApiResult(const xprotect::XProtectLineCrossingDecis
 
 }
 
+struct XProtectLineCrossingHandler::DecisionCache {
+    std::mutex mutex;
+    std::unordered_map<std::string, XProtectLineCrossingResult> decisions;
+};
+
 XProtectLineCrossingHandler::XProtectLineCrossingHandler(
     xprotect::XProtectLineCrossingService& service,
     ReceivedAtParser receivedAtParser
 ) : service_{service},
-    receivedAtParser_{std::move(receivedAtParser)} {
+    receivedAtParser_{std::move(receivedAtParser)},
+    decisionCache_{std::make_shared<DecisionCache>()} {
 }
 
 XProtectLineCrossingResult XProtectLineCrossingHandler::operator()(
     const XProtectLineCrossingEvent& event
 ) const {
+    std::unique_lock<std::mutex> cacheLock;
+    if (!event.eventId.empty()) {
+        cacheLock = std::unique_lock<std::mutex>{decisionCache_->mutex};
+        const auto cached = decisionCache_->decisions.find(event.eventId);
+        if (cached != decisionCache_->decisions.end()) {
+            auto duplicate = cached->second;
+            duplicate.duplicate = true;
+            return duplicate;
+        }
+    }
+
     auto receivedAt = Clock::time_point{};
     if (!event.receivedAt.empty()) {
         const auto parsed = receivedAtParser_(event.receivedAt);
@@ -72,11 +92,21 @@ XProtectLineCrossingResult XProtectLineCrossingHandler::operator()(
         receivedAt = *parsed;
     }
 
-    return toApiResult(service_.evaluate({
+    auto result = toApiResult(service_.evaluate({
         event.eventName,
         event.sourceName,
         receivedAt
     }));
+
+    if (!event.eventId.empty() && result.accepted && result.status == "processed") {
+        constexpr std::size_t MaxCachedDecisions = 4096;
+        if (decisionCache_->decisions.size() >= MaxCachedDecisions) {
+            decisionCache_->decisions.erase(decisionCache_->decisions.begin());
+        }
+        decisionCache_->decisions.emplace(event.eventId, result);
+    }
+
+    return result;
 }
 
 std::optional<XProtectLineCrossingHandler::Clock::time_point>
@@ -86,12 +116,24 @@ XProtectLineCrossingHandler::parseReceivedAt(const std::string& value) {
     }
 
     if (isDigitsOnly(value)) {
-        return Clock::time_point{std::chrono::milliseconds{std::stoll(value)}};
+        try {
+            return Clock::time_point{std::chrono::milliseconds{std::stoll(value)}};
+        } catch (const std::exception&) {
+            return std::nullopt;
+        }
+    }
+
+    static const std::regex IsoUtcPattern{
+        R"(^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(?:\.(\d{1,9}))?Z$)"
+    };
+    std::smatch match;
+    if (!std::regex_match(value, match, IsoUtcPattern)) {
+        return std::nullopt;
     }
 
     std::tm time{};
-    std::istringstream input{value};
-    input >> std::get_time(&time, "%Y-%m-%dT%H:%M:%SZ");
+    std::istringstream input{match[1].str()};
+    input >> std::get_time(&time, "%Y-%m-%dT%H:%M:%S");
     if (input.fail()) {
         return std::nullopt;
     }
@@ -101,7 +143,16 @@ XProtectLineCrossingHandler::parseReceivedAt(const std::string& value) {
         return std::nullopt;
     }
 
-    return Clock::from_time_t(*utc);
+    auto parsed = Clock::from_time_t(*utc);
+    if (match[2].matched) {
+        auto fractionalDigits = match[2].str();
+        fractionalDigits.append(9 - fractionalDigits.size(), '0');
+        parsed += std::chrono::duration_cast<Clock::duration>(
+            std::chrono::nanoseconds{std::stoll(fractionalDigits)}
+        );
+    }
+
+    return parsed;
 }
 
 }

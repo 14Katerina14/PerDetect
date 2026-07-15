@@ -1,0 +1,4 @@
+<plugin>
+  <file name="SecureZone.XProtectPlugin.dll"/>
+  <load env="Service"/>
+</plugin>
