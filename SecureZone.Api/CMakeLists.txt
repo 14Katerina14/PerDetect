@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(SecureZoneApi LANGUAGES CXX)
 
 add_library(SecureZoneApi
+    src/ApiApplication.cpp
     src/ApiResponse.cpp
     src/ApiServer.cpp
     src/ApiSettings.cpp

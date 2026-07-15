@@ -1,4 +1,4 @@
-#include "securezone/api/ApiServer.h"
+#include "securezone/api/ApiApplication.h"
 #include "securezone/api/http/Router.h"
 
 #include <cassert>
@@ -77,6 +77,59 @@ void settingsCanBePassedToServer() {
     assert(server.settings().mongoDatabaseName == "securezone_test");
 }
 
+void applicationRoutesHealthRequests() {
+    const ApiApplication app{};
+
+    const auto response = app.handle({"GET", "/health", {}, {}});
+
+    assert(response.statusCode == 200);
+    assert(response.body.find("securezone-api") != std::string::npos);
+}
+
+void applicationRoutesQrCheckInRequests() {
+    const ApiApplication app{};
+
+    const auto response = app.handle({
+        "POST",
+        "/api/qr/check-in",
+        R"({"employeeId":"EMP-001","qrToken":"token"})",
+        {}
+    });
+
+    assert(response.statusCode == 501);
+    assert(response.body.find("QR check-in endpoint") != std::string::npos);
+}
+
+void applicationRoutesXProtectLineCrossingRequests() {
+    const ApiApplication app{};
+
+    const auto response = app.handle({
+        "POST",
+        "/api/xprotect/line-crossing",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2"})",
+        {}
+    });
+
+    assert(response.statusCode == 501);
+    assert(response.body.find("XProtect LineCrossing endpoint") != std::string::npos);
+}
+
+void applicationKeepsSettingsAndStartupSummary() {
+    ApiSettings settings{};
+    settings.host = "127.0.0.1";
+    settings.port = 9091;
+    settings.mongoDatabaseName = "securezone_local";
+    ApiApplicationInfo info{};
+    info.version = "test";
+
+    const ApiApplication app{settings, info};
+
+    assert(app.settings().host == "127.0.0.1");
+    assert(app.info().version == "test");
+    assert(app.startupSummary().find("127.0.0.1:9091") != std::string::npos);
+    assert(app.startupSummary().find("securezone_local") != std::string::npos);
+}
+
 }
 
 int main() {
@@ -86,4 +139,8 @@ int main() {
     routerReturnsNotFoundForUnknownPath();
     routerReturnsMethodNotAllowedForKnownPathWithWrongMethod();
     settingsCanBePassedToServer();
+    applicationRoutesHealthRequests();
+    applicationRoutesQrCheckInRequests();
+    applicationRoutesXProtectLineCrossingRequests();
+    applicationKeepsSettingsAndStartupSummary();
 }

@@ -1,15 +1,12 @@
 #include <iostream>
 
-#include "securezone/api/ApiServer.h"
-#include "securezone/api/ApiSettings.h"
+#include "securezone/api/ApiApplication.h"
 
 int main() {
-    const auto settings = securezone::api::loadApiSettingsFromEnvironment();
-    const securezone::api::ApiServer server{settings};
+    const auto app = securezone::api::createApiApplicationFromEnvironment();
 
-    const auto response = server.handle({"GET", "/health", {}, {}});
+    const auto response = app.handle({"GET", "/health", {}, {}});
     std::cout << response.body << '\n';
-    std::cout << "SecureZone API skeleton configured for "
-              << settings.host << ':' << settings.port << '\n';
+    std::cout << app.startupSummary() << '\n';
     return response.statusCode == 200 ? 0 : 1;
 }
