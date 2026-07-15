@@ -13,6 +13,7 @@ add_library(SecureZoneCore
     src/identity/RolePermissionService.cpp
     src/machine/MachineStatusService.cpp
     src/presence/PresenceSessionService.cpp
+    src/qr/QrCheckInService.cpp
     src/webhook/WebhookNotificationService.cpp
     src/webhook/WebhookDeliveryService.cpp)
 target_compile_features(SecureZoneCore PUBLIC cxx_std_17)
@@ -26,6 +27,7 @@ set(SECUREZONE_CORE_TESTS
     MachineStatusServiceTests
     ConfigurationServicesTests
     PresenceSessionServiceTests
+    QrCheckInServiceTests
     WebhookNotificationServiceTests
     WebhookDeliveryServiceTests
 )
@@ -33,6 +35,8 @@ set(SECUREZONE_CORE_TESTS
 foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
     if(test_name STREQUAL "PresenceSessionServiceTests")
         set(test_source tests/presence/PresenceSessionServiceTests.cpp)
+    elseif(test_name STREQUAL "QrCheckInServiceTests")
+        set(test_source tests/qr/QrCheckInServiceTests.cpp)
     elseif(test_name STREQUAL "ConfigurationServicesTests")
         set(test_source tests/configuration/ConfigurationServicesTests.cpp)
     else()
