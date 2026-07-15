@@ -12,9 +12,9 @@ namespace securezone::infrastructure::mongodb::repositories {
 
 namespace {
 
-constexpr const char* ZoneIdField = "zoneId";
-constexpr const char* StatusField = "status";
-constexpr const char* ActiveStatus = "active";
+constexpr char ZoneIdField[] = "zoneId";
+constexpr char StatusField[] = "status";
+constexpr char ActiveStatus[] = "active";
 
 const char* zoneTypeToString(domain::ZoneType type) {
     switch (type) {

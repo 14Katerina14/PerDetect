@@ -26,7 +26,7 @@ public:
     ) const override;
 
 private:
-    mongocxx::collection qrCheckinsCollection_;
+    mutable mongocxx::collection qrCheckinsCollection_;
 };
 
 }

@@ -25,7 +25,7 @@ public:
     bool save(const domain::WebhookTarget& target) override;
 
 private:
-    mongocxx::collection webhookTargetsCollection_;
+    mutable mongocxx::collection webhookTargetsCollection_;
 };
 
 }

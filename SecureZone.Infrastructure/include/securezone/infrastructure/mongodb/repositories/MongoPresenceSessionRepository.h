@@ -33,7 +33,7 @@ public:
     ) override;
 
 private:
-    mongocxx::collection presenceSessionsCollection_;
+    mutable mongocxx::collection presenceSessionsCollection_;
 };
 
 }

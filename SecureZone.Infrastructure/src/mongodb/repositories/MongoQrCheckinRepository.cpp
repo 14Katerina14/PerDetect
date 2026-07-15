@@ -16,12 +16,12 @@ namespace {
 
 using Clock = std::chrono::system_clock;
 
-constexpr const char* ActiveStatus = "active";
-constexpr const char* CheckinIdField = "checkinId";
-constexpr const char* EmployeeIdField = "employeeId";
-constexpr const char* ScannedByUserIdField = "scannedByUserId";
-constexpr const char* StatusField = "status";
-constexpr const char* ZoneIdField = "zoneId";
+constexpr char ActiveStatus[] = "active";
+constexpr char CheckinIdField[] = "checkinId";
+constexpr char EmployeeIdField[] = "employeeId";
+constexpr char ScannedByUserIdField[] = "scannedByUserId";
+constexpr char StatusField[] = "status";
+constexpr char ZoneIdField[] = "zoneId";
 
 const char* qrCheckinStatusToString(domain::QrCheckInStatus status) {
     switch (status) {

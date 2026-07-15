@@ -25,7 +25,7 @@ public:
     ) override;
 
 private:
-    mongocxx::collection machinesCollection_;
+    mutable mongocxx::collection machinesCollection_;
 };
 
 }

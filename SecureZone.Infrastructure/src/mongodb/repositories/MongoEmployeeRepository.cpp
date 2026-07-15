@@ -11,7 +11,7 @@ namespace securezone::infrastructure::mongodb::repositories {
 
 namespace {
 
-constexpr const char* EmployeeIdField = "employeeId";
+constexpr char EmployeeIdField[] = "employeeId";
 
 }
 

@@ -15,13 +15,13 @@ namespace {
 
 using Clock = std::chrono::system_clock;
 
-constexpr const char* ActiveStatus = "active";
-constexpr const char* AlarmIdField = "alarmId";
-constexpr const char* CreatedStatus = "created";
-constexpr const char* ResolvedStatus = "resolved";
-constexpr const char* StatusField = "status";
-constexpr const char* TrackIdField = "trackId";
-constexpr const char* ZoneIdField = "zoneId";
+constexpr char ActiveStatus[] = "active";
+constexpr char AlarmIdField[] = "alarmId";
+constexpr char CreatedStatus[] = "created";
+constexpr char ResolvedStatus[] = "resolved";
+constexpr char StatusField[] = "status";
+constexpr char TrackIdField[] = "trackId";
+constexpr char ZoneIdField[] = "zoneId";
 
 std::string alarmStatusToString(domain::AlarmStatus status) {
     switch (status) {

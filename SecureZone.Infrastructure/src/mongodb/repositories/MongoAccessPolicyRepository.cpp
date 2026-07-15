@@ -14,7 +14,7 @@ namespace securezone::infrastructure::mongodb::repositories {
 
 namespace {
 
-constexpr const char* ZoneIdField = "zoneId";
+constexpr char ZoneIdField[] = "zoneId";
 
 const char* machineStatusToString(domain::MachineStatus status) {
     switch (status) {

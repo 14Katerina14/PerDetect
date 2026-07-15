@@ -25,7 +25,7 @@ public:
     bool save(const domain::Zone& zone) override;
 
 private:
-    mongocxx::collection zonesCollection_;
+    mutable mongocxx::collection zonesCollection_;
 };
 
 }

@@ -21,7 +21,7 @@ public:
     bool save(const domain::AccessPolicy& policy) override;
 
 private:
-    mongocxx::collection accessPoliciesCollection_;
+    mutable mongocxx::collection accessPoliciesCollection_;
 };
 
 }

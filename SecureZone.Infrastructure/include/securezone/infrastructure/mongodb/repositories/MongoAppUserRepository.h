@@ -23,7 +23,7 @@ public:
     ) const override;
 
 private:
-    mongocxx::collection appUsersCollection_;
+    mutable mongocxx::collection appUsersCollection_;
 };
 
 }

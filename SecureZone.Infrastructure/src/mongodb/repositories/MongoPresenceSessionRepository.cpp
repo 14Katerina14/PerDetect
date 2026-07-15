@@ -15,12 +15,12 @@ namespace {
 
 using Clock = std::chrono::system_clock;
 
-constexpr const char* ActiveStatus = "active";
-constexpr const char* EmployeeIdField = "employeeId";
-constexpr const char* EndedStatus = "ended";
-constexpr const char* SessionIdField = "sessionId";
-constexpr const char* StatusField = "status";
-constexpr const char* ZoneIdField = "zoneId";
+constexpr char ActiveStatus[] = "active";
+constexpr char EmployeeIdField[] = "employeeId";
+constexpr char EndedStatus[] = "ended";
+constexpr char SessionIdField[] = "sessionId";
+constexpr char StatusField[] = "status";
+constexpr char ZoneIdField[] = "zoneId";
 
 const char* presenceSessionStatusToString(domain::PresenceSessionStatus status) {
     switch (status) {

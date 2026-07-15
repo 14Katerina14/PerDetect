@@ -28,7 +28,7 @@ public:
     ) override;
 
 private:
-    mongocxx::collection alarmsCollection_;
+    mutable mongocxx::collection alarmsCollection_;
 };
 
 }

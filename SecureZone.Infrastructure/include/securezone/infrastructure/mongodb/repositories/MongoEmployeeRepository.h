@@ -19,7 +19,7 @@ public:
     ) const override;
 
 private:
-    mongocxx::collection employeesCollection_;
+    mutable mongocxx::collection employeesCollection_;
 };
 
 }

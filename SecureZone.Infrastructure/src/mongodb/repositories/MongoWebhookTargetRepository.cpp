@@ -14,9 +14,9 @@ namespace securezone::infrastructure::mongodb::repositories {
 
 namespace {
 
-constexpr const char* ActiveStatus = "active";
-constexpr const char* StatusField = "status";
-constexpr const char* TargetIdField = "targetId";
+constexpr char ActiveStatus[] = "active";
+constexpr char StatusField[] = "status";
+constexpr char TargetIdField[] = "targetId";
 
 const char* statusToString(domain::WebhookTargetStatus status) {
     return status == domain::WebhookTargetStatus::Active
