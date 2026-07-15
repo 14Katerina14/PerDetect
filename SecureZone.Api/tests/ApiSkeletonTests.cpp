@@ -38,7 +38,7 @@ void xprotectRouteAcceptsWiseAiLineCrossingEvent() {
     const auto response = server.handle({
         "POST",
         "/api/xprotect/line-crossing",
-        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T (192.168.0.101) - Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
         {}
     });
 
@@ -108,7 +108,7 @@ void applicationRoutesXProtectLineCrossingRequests() {
     const auto response = app.handle({
         "POST",
         "/api/xprotect/line-crossing",
-        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T (192.168.0.101) - Camera 1"})",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1"})",
         {}
     });
 
