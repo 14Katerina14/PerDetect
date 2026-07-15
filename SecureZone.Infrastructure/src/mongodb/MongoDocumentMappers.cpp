@@ -138,6 +138,24 @@ domain::EmployeeStatus employeeStatusFromString(const std::string& value) {
     return domain::EmployeeStatus::Inactive;
 }
 
+domain::AppUserRole appUserRoleFromString(const std::string& value) {
+    if (value == "manager") {
+        return domain::AppUserRole::Manager;
+    }
+
+    if (value == "admin") {
+        return domain::AppUserRole::Admin;
+    }
+
+    return domain::AppUserRole::Scanner;
+}
+
+domain::AppUserStatus appUserStatusFromString(const std::string& value) {
+    return value == "active"
+        ? domain::AppUserStatus::Active
+        : domain::AppUserStatus::Inactive;
+}
+
 domain::ZoneType zoneTypeFromString(const std::string& value) {
     if (value == "safe") {
         return domain::ZoneType::Safe;
@@ -232,6 +250,15 @@ domain::Employee mapEmployeeDocument(bsoncxx::document::view document) {
     return employee;
 }
 
+domain::AppUser mapAppUserDocument(bsoncxx::document::view document) {
+    domain::AppUser user{};
+    user.userId = requiredString(document, "userId");
+    user.username = requiredString(document, "username");
+    user.role = appUserRoleFromString(requiredString(document, "role"));
+    user.status = appUserStatusFromString(requiredString(document, "status"));
+    return user;
+}
+
 domain::Zone mapZoneDocument(bsoncxx::document::view document) {
     domain::Zone zone{};
     zone.zoneId = requiredString(document, "zoneId");
@@ -290,6 +317,7 @@ domain::QrCheckin mapQrCheckinDocument(bsoncxx::document::view document) {
     qrCheckin.checkInId = requiredString(document, "checkinId");
     qrCheckin.employeeId = requiredString(document, "employeeId");
     qrCheckin.zoneId = requiredString(document, "zoneId");
+    qrCheckin.scannedByUserId = requiredString(document, "scannedByUserId");
     qrCheckin.scannedAt = requiredDate(document, "scannedAt");
     qrCheckin.validUntil = requiredDate(document, "expiresAt");
     qrCheckin.status = qrCheckinStatusFromString(requiredString(document, "status"));

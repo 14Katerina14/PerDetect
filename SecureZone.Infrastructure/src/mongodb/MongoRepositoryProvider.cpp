@@ -6,6 +6,7 @@ namespace {
 
 constexpr const char* AccessPoliciesCollection = "access_policies";
 constexpr const char* AlarmsCollection = "alarms";
+constexpr const char* AppUsersCollection = "app_users";
 constexpr const char* EmployeesCollection = "employees";
 constexpr const char* MachinesCollection = "machines";
 constexpr const char* PresenceSessionsCollection = "presence_sessions";
@@ -22,6 +23,12 @@ MongoRepositoryProvider::MongoRepositoryProvider(MongoDbClient& client)
 repositories::MongoEmployeeRepository MongoRepositoryProvider::employeeRepository() {
     return repositories::MongoEmployeeRepository{
         client_.database()[EmployeesCollection]
+    };
+}
+
+repositories::MongoAppUserRepository MongoRepositoryProvider::appUserRepository() {
+    return repositories::MongoAppUserRepository{
+        client_.database()[AppUsersCollection]
     };
 }
 

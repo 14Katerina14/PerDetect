@@ -3,6 +3,7 @@
 #include <chrono>
 #include <string>
 
+#include "securezone/domain/AppUser.h"
 #include "securezone/domain/Employee.h"
 #include "securezone/domain/PresenceSession.h"
 #include "securezone/domain/QrCheckIn.h"
@@ -36,6 +37,7 @@ domain::QrCheckin createQrCheckin(
     qrCheckin.checkInId = request.checkinId;
     qrCheckin.employeeId = request.employeeId;
     qrCheckin.zoneId = request.zoneId;
+    qrCheckin.scannedByUserId = request.scannedByUserId;
     qrCheckin.scannedAt = request.scannedAt;
     qrCheckin.validUntil = request.expiresAt;
     qrCheckin.status = domain::QrCheckInStatus::Active;
@@ -70,10 +72,12 @@ bool PresenceSessionStartResult::accepted() const {
 
 PresenceSessionService::PresenceSessionService(
     const repository::IEmployeeRepository& employeeRepository,
+    const repository::IAppUserRepository& appUserRepository,
     const repository::IZoneRepository& zoneRepository,
     repository::IQrCheckinRepository& qrCheckinRepository,
     repository::IPresenceSessionRepository& presenceSessionRepository
 ) : employeeRepository_{employeeRepository},
+    appUserRepository_{appUserRepository},
     zoneRepository_{zoneRepository},
     qrCheckinRepository_{qrCheckinRepository},
     presenceSessionRepository_{presenceSessionRepository} {
@@ -85,6 +89,7 @@ PresenceSessionStartResult PresenceSessionService::startFromQrCheckin(
     if (request.checkinId.empty()
         || request.employeeId.empty()
         || request.zoneId.empty()
+        || request.scannedByUserId.empty()
         || request.expiresAt <= request.scannedAt) {
         return PresenceSessionStartResult{
             PresenceSessionStartStatus::InvalidRequest,
@@ -118,6 +123,21 @@ PresenceSessionStartResult PresenceSessionService::startFromQrCheckin(
     if (zone->status != domain::ZoneStatus::Active) {
         return PresenceSessionStartResult{
             PresenceSessionStartStatus::ZoneInactive,
+            {}
+        };
+    }
+
+    auto scanner = appUserRepository_.findByUserId(request.scannedByUserId);
+    if (!scanner.has_value()) {
+        return PresenceSessionStartResult{
+            PresenceSessionStartStatus::ScannerNotFound,
+            {}
+        };
+    }
+
+    if (!scanner->canScanQr()) {
+        return PresenceSessionStartResult{
+            PresenceSessionStartStatus::ScannerNotAllowed,
             {}
         };
     }

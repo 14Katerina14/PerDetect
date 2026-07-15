@@ -3,6 +3,7 @@
 #include "securezone/infrastructure/mongodb/MongoDbClient.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoAccessPolicyRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoAlarmRepository.h"
+#include "securezone/infrastructure/mongodb/repositories/MongoAppUserRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoEmployeeRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoMachineRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoPresenceSessionRepository.h"
@@ -17,6 +18,7 @@ public:
     explicit MongoRepositoryProvider(MongoDbClient& client);
 
     repositories::MongoEmployeeRepository employeeRepository();
+    repositories::MongoAppUserRepository appUserRepository();
     repositories::MongoZoneRepository zoneRepository();
     repositories::MongoMachineRepository machineRepository();
     repositories::MongoAccessPolicyRepository accessPolicyRepository();

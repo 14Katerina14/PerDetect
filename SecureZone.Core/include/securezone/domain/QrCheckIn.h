@@ -14,6 +14,7 @@ struct QrCheckIn {
     std::string checkInId;
     std::string employeeId;
     std::string zoneId;
+    std::string scannedByUserId;
     QrCheckInStatus status{QrCheckInStatus::Active};
     std::chrono::system_clock::time_point scannedAt{};
     std::chrono::system_clock::time_point validUntil{};
@@ -22,6 +23,7 @@ struct QrCheckIn {
         return !checkInId.empty()
             && !employeeId.empty()
             && !zoneId.empty()
+            && !scannedByUserId.empty()
             && validUntil > scannedAt;
     }
 

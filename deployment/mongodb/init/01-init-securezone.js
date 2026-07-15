@@ -2,6 +2,7 @@ const databaseName = process.env.MONGO_INITDB_DATABASE || "securezone";
 const securezone = db.getSiblingDB(databaseName);
 
 const collections = [
+  "app_users",
   "employees",
   "qr_checkins",
   "presence_sessions",
@@ -19,6 +20,11 @@ collections.forEach((collectionName) => {
   }
 });
 
+securezone.app_users.createIndex({ userId: 1 }, { unique: true });
+securezone.app_users.createIndex({ username: 1 }, { unique: true });
+securezone.app_users.createIndex({ role: 1 });
+securezone.app_users.createIndex({ status: 1 });
+
 securezone.employees.createIndex({ employeeId: 1 }, { unique: true });
 securezone.employees.createIndex({ qrTokenHash: 1 }, { unique: true });
 securezone.employees.createIndex({ roles: 1 });
@@ -27,6 +33,7 @@ securezone.employees.createIndex({ status: 1 });
 securezone.qr_checkins.createIndex({ checkinId: 1 }, { unique: true });
 securezone.qr_checkins.createIndex({ employeeId: 1 });
 securezone.qr_checkins.createIndex({ zoneId: 1 });
+securezone.qr_checkins.createIndex({ scannedByUserId: 1 });
 securezone.qr_checkins.createIndex({ scannedAt: -1 });
 securezone.qr_checkins.createIndex({ status: 1 });
 
@@ -66,6 +73,19 @@ securezone.webhook_deliveries.createIndex({ lastAttemptAt: -1 });
 
 securezone.webhook_targets.createIndex({ targetId: 1 }, { unique: true });
 securezone.webhook_targets.createIndex({ status: 1 });
+
+securezone.app_users.updateOne(
+  { userId: "APP-SCANNER-001" },
+  {
+    $set: {
+      userId: "APP-SCANNER-001",
+      username: "scanner",
+      role: "scanner",
+      status: "active"
+    }
+  },
+  { upsert: true }
+);
 
 securezone.employees.updateOne(
   { employeeId: "EMP-001" },

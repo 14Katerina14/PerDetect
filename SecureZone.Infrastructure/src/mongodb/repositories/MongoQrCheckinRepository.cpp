@@ -19,6 +19,7 @@ using Clock = std::chrono::system_clock;
 constexpr const char* ActiveStatus = "active";
 constexpr const char* CheckinIdField = "checkinId";
 constexpr const char* EmployeeIdField = "employeeId";
+constexpr const char* ScannedByUserIdField = "scannedByUserId";
 constexpr const char* StatusField = "status";
 constexpr const char* ZoneIdField = "zoneId";
 
@@ -45,6 +46,7 @@ bsoncxx::document::value toQrCheckinDocument(const domain::QrCheckin& qrCheckin)
         bsoncxx::builder::basic::kvp(CheckinIdField, qrCheckin.checkInId),
         bsoncxx::builder::basic::kvp(EmployeeIdField, qrCheckin.employeeId),
         bsoncxx::builder::basic::kvp(ZoneIdField, qrCheckin.zoneId),
+        bsoncxx::builder::basic::kvp(ScannedByUserIdField, qrCheckin.scannedByUserId),
         bsoncxx::builder::basic::kvp("scannedAt", toBsonDate(qrCheckin.scannedAt)),
         bsoncxx::builder::basic::kvp("expiresAt", toBsonDate(qrCheckin.validUntil)),
         bsoncxx::builder::basic::kvp(StatusField, qrCheckinStatusToString(qrCheckin.status))

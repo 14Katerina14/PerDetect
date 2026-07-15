@@ -28,6 +28,18 @@ domain::Employee makeEmployee(
     return employee;
 }
 
+domain::AppUser makeScannerUser(
+    domain::AppUserRole role = domain::AppUserRole::Scanner,
+    domain::AppUserStatus status = domain::AppUserStatus::Active
+) {
+    domain::AppUser user{};
+    user.userId = "APP-SCANNER-001";
+    user.username = "scanner";
+    user.role = role;
+    user.status = status;
+    return user;
+}
+
 domain::Zone makeZone() {
     domain::Zone zone{};
     zone.zoneId = "ZONE-001";
@@ -56,6 +68,7 @@ presence::PresenceSessionStartRequest makeRequest() {
     request.checkinId = "CHECKIN-001";
     request.employeeId = "EMP-001";
     request.zoneId = "ZONE-001";
+    request.scannedByUserId = "APP-SCANNER-001";
     request.scannedAt = testTime(10);
     request.expiresAt = testTime(70);
     return request;
@@ -73,6 +86,31 @@ public:
         }
 
         return employee;
+    }
+};
+
+class FakeAppUserRepository final : public repository::IAppUserRepository {
+public:
+    std::optional<domain::AppUser> user;
+
+    std::optional<domain::AppUser> findByUserId(
+        const std::string& userId
+    ) const override {
+        if (!user.has_value() || user->userId != userId) {
+            return std::nullopt;
+        }
+
+        return user;
+    }
+
+    std::optional<domain::AppUser> findByUsername(
+        const std::string& username
+    ) const override {
+        if (!user.has_value() || user->username != username) {
+            return std::nullopt;
+        }
+
+        return user;
     }
 };
 
@@ -193,6 +231,7 @@ public:
 
 struct TestContext {
     FakeEmployeeRepository employeeRepository;
+    FakeAppUserRepository appUserRepository;
     FakeZoneRepository zoneRepository;
     FakeQrCheckinRepository qrCheckinRepository;
     FakePresenceSessionRepository presenceSessionRepository;
@@ -201,6 +240,7 @@ struct TestContext {
 presence::PresenceSessionService makeService(TestContext& context) {
     return presence::PresenceSessionService{
         context.employeeRepository,
+        context.appUserRepository,
         context.zoneRepository,
         context.qrCheckinRepository,
         context.presenceSessionRepository
@@ -250,6 +290,7 @@ void rejectsMissingZoneWithoutCreatingCheckin() {
 void createsNewPresenceSessionWhenNoActiveSessionExists() {
     TestContext context{};
     context.employeeRepository.employee = makeEmployee();
+    context.appUserRepository.user = makeScannerUser();
     context.zoneRepository.zone = makeZone();
     auto service = makeService(context);
 
@@ -259,6 +300,7 @@ void createsNewPresenceSessionWhenNoActiveSessionExists() {
     assert(result.accepted());
     assert(!result.sessionId.empty());
     assert(context.qrCheckinRepository.createdCheckins.size() == 1);
+    assert(context.qrCheckinRepository.createdCheckins.front().scannedByUserId == "APP-SCANNER-001");
     assert(context.presenceSessionRepository.createdSessions.size() == 1);
     assert(context.presenceSessionRepository.createdSessions.front().sessionId == result.sessionId);
     assert(context.presenceSessionRepository.createdSessions.front().sourceCheckinId == "CHECKIN-001");
@@ -267,6 +309,7 @@ void createsNewPresenceSessionWhenNoActiveSessionExists() {
 void extendsExistingPresenceSessionWhenActiveSessionExists() {
     TestContext context{};
     context.employeeRepository.employee = makeEmployee();
+    context.appUserRepository.user = makeScannerUser();
     context.zoneRepository.zone = makeZone();
     context.presenceSessionRepository.activeSession = makePresenceSession();
     auto service = makeService(context);
@@ -281,6 +324,35 @@ void extendsExistingPresenceSessionWhenActiveSessionExists() {
     assert(context.presenceSessionRepository.createdSessions.empty());
     assert(context.presenceSessionRepository.extendedSessionId == "SESSION-001");
     assert(context.presenceSessionRepository.extendedExpiresAt == request.expiresAt);
+}
+
+void rejectsMissingScannerUserWithoutCreatingCheckin() {
+    TestContext context{};
+    context.employeeRepository.employee = makeEmployee();
+    context.zoneRepository.zone = makeZone();
+    auto service = makeService(context);
+
+    const auto result = service.startFromQrCheckin(makeRequest());
+
+    assert(result.status == presence::PresenceSessionStartStatus::ScannerNotFound);
+    assert(!result.accepted());
+    assert(context.qrCheckinRepository.createdCheckins.empty());
+    assert(context.presenceSessionRepository.createdSessions.empty());
+}
+
+void rejectsNonScannerAppUserWithoutCreatingCheckin() {
+    TestContext context{};
+    context.employeeRepository.employee = makeEmployee();
+    context.appUserRepository.user = makeScannerUser(domain::AppUserRole::Manager);
+    context.zoneRepository.zone = makeZone();
+    auto service = makeService(context);
+
+    const auto result = service.startFromQrCheckin(makeRequest());
+
+    assert(result.status == presence::PresenceSessionStartStatus::ScannerNotAllowed);
+    assert(!result.accepted());
+    assert(context.qrCheckinRepository.createdCheckins.empty());
+    assert(context.presenceSessionRepository.createdSessions.empty());
 }
 
 void endSessionDelegatesToRepository() {
@@ -300,6 +372,8 @@ int main() {
     rejectsMissingEmployeeWithoutCreatingCheckin();
     rejectsInactiveEmployeeWithoutCreatingCheckin();
     rejectsMissingZoneWithoutCreatingCheckin();
+    rejectsMissingScannerUserWithoutCreatingCheckin();
+    rejectsNonScannerAppUserWithoutCreatingCheckin();
     createsNewPresenceSessionWhenNoActiveSessionExists();
     extendsExistingPresenceSessionWhenActiveSessionExists();
     endSessionDelegatesToRepository();
