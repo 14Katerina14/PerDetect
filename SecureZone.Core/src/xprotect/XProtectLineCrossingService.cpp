@@ -90,6 +90,15 @@ XProtectLineCrossingService::XProtectLineCrossingService(
     identityBindingResolver_{std::move(identityBindingResolver)} {
 }
 
+XProtectLineCrossingService::XProtectLineCrossingService(
+    ZoneResolver zoneResolver,
+    IdentityBindingResolver identityBindingResolver,
+    PolicyAlarmEvaluator policyAlarmEvaluator
+) : zoneResolver_{std::move(zoneResolver)},
+    identityBindingResolver_{std::move(identityBindingResolver)},
+    policyAlarmEvaluator_{std::move(policyAlarmEvaluator)} {
+}
+
 XProtectLineCrossingDecision XProtectLineCrossingService::evaluate(
     const XProtectLineCrossingCommand& command
 ) const {
@@ -115,13 +124,21 @@ XProtectLineCrossingDecision XProtectLineCrossingService::evaluate(
     }
 
     if (identityBindingResolver_) {
+        std::optional<domain::TrackIdentityBinding> binding;
+        if (!command.cameraId.empty() && !command.objectId.empty()) {
+            binding = identityBindingResolver_(
+                command.cameraId, command.objectId, command.receivedAt
+            );
+        }
+
+        if (policyAlarmEvaluator_) {
+            return policyAlarmEvaluator_(command, *zone, binding);
+        }
+
         if (command.cameraId.empty() || command.objectId.empty()) {
             return violation(*zone, "Line crossing event has no cameraId or ObjectId identity evidence.");
         }
 
-        const auto binding = identityBindingResolver_(
-            command.cameraId, command.objectId, command.receivedAt
-        );
         if (!binding.has_value() || !binding->isActiveAt(command.receivedAt)) {
             return violation(*zone, "Camera object has no active QR identity binding.");
         }

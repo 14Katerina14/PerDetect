@@ -20,6 +20,8 @@ public:
         const std::string& zoneId
     ) const override;
 
+    std::size_t countActiveByZone(const std::string& zoneId) const override;
+
     void create(const domain::Alarm& alarm) override;
 
     void resolve(

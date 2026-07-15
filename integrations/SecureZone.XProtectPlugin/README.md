@@ -123,4 +123,22 @@ Name: SecureZone violation confirmed
 ```
 
 The rule action should activate the external speaker or output device. The
-plugin raises this event only after the backend returns `violation`.
+plugin raises this event only after the backend creates a new violation.
+
+Create a second rule that stops the speaker or output device when this event
+is received:
+
+```text
+Class: SecureZone
+Type: SecureZoneViolationCleared
+Name: SecureZone violation cleared
+```
+
+The cleared event is raised only after an exiting camera object resolves its
+alarm and no other active violations remain in the zone.
+
+The backend recognizes `exit`, `exited`, `leave`, `leaving`, `out`, `outside`,
+`outbound`, `stop`, and `end` as exit action values. Other values are treated
+as entry actions. Confirm the exact Hanwha WiseAI `Action` value during the
+office end-to-end test and extend this list if the installed firmware uses a
+different value.

@@ -8,6 +8,7 @@
 #include "securezone/identity/CameraIdentityService.h"
 #include "securezone/qr/QrCheckInService.h"
 #include "securezone/xprotect/XProtectLineCrossingService.h"
+#include "securezone/xprotect/XProtectPolicyAlarmService.h"
 
 #include <algorithm>
 #include <optional>
@@ -48,6 +49,9 @@ struct MongoApiRuntimeComposition::State {
           employees{repositoryProvider.employeeRepository()},
           appUsers{repositoryProvider.appUserRepository()},
           zones{repositoryProvider.zoneRepository()},
+          machines{repositoryProvider.machineRepository()},
+          accessPolicies{repositoryProvider.accessPolicyRepository()},
+          alarms{repositoryProvider.alarmRepository()},
           qrCheckins{repositoryProvider.qrCheckinRepository()},
           presenceSessions{repositoryProvider.presenceSessionRepository()},
           cameraObjectTracks{repositoryProvider.cameraObjectTrackRepository()},
@@ -60,6 +64,7 @@ struct MongoApiRuntimeComposition::State {
               [] { return qr::QrCheckInService::Clock::now(); },
               this->config.apiRuntime.qrPresenceDuration
           },
+          policyAlarmService{employees, accessPolicies, machines, alarms},
           xprotectService{
               [this](const xprotect::XProtectLineCrossingCommand& command) {
                   return resolveXProtectZone(command);
@@ -67,6 +72,13 @@ struct MongoApiRuntimeComposition::State {
               [this](const std::string& cameraId, const std::string& objectId,
                      xprotect::XProtectLineCrossingService::Clock::time_point at) {
                   return cameraIdentityService.resolve(cameraId, objectId, at);
+              },
+              [this](
+                  const xprotect::XProtectLineCrossingCommand& command,
+                  const domain::Zone& zone,
+                  const std::optional<domain::TrackIdentityBinding>& binding
+              ) {
+                  return policyAlarmService.evaluate(command, zone, binding);
               }
           } {
     }
@@ -95,6 +107,9 @@ struct MongoApiRuntimeComposition::State {
     infrastructure::mongodb::repositories::MongoEmployeeRepository employees;
     infrastructure::mongodb::repositories::MongoAppUserRepository appUsers;
     infrastructure::mongodb::repositories::MongoZoneRepository zones;
+    infrastructure::mongodb::repositories::MongoMachineRepository machines;
+    infrastructure::mongodb::repositories::MongoAccessPolicyRepository accessPolicies;
+    infrastructure::mongodb::repositories::MongoAlarmRepository alarms;
     infrastructure::mongodb::repositories::MongoQrCheckinRepository qrCheckins;
     infrastructure::mongodb::repositories::MongoPresenceSessionRepository presenceSessions;
     infrastructure::mongodb::repositories::MongoCameraObjectTrackRepository cameraObjectTracks;
@@ -102,6 +117,7 @@ struct MongoApiRuntimeComposition::State {
     identity::CameraIdentityService cameraIdentityService;
     presence::PresenceSessionService presenceService;
     qr::QrCheckInService qrService;
+    xprotect::XProtectPolicyAlarmService policyAlarmService;
     xprotect::XProtectLineCrossingService xprotectService;
 };
 

@@ -1,6 +1,7 @@
 #include "securezone/infrastructure/mongodb/repositories/MongoAlarmRepository.h"
 
 #include <bsoncxx/builder/basic/document.hpp>
+#include <bsoncxx/builder/basic/helpers.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
 #include <bsoncxx/types.hpp>
 
@@ -18,12 +19,22 @@ namespace {
 using Clock = std::chrono::system_clock;
 
 constexpr char ActiveStatus[] = "active";
+constexpr char AcknowledgedStatus[] = "acknowledged";
 constexpr char AlarmIdField[] = "alarmId";
 constexpr char CreatedStatus[] = "created";
 constexpr char ResolvedStatus[] = "resolved";
 constexpr char StatusField[] = "status";
 constexpr char TrackIdField[] = "trackId";
 constexpr char ZoneIdField[] = "zoneId";
+
+bsoncxx::document::value activeStatusFilter() {
+    return bsoncxx::builder::basic::make_document(
+        bsoncxx::builder::basic::kvp(
+            "$in",
+            bsoncxx::builder::basic::make_array(ActiveStatus, AcknowledgedStatus)
+        )
+    );
+}
 
 std::string alarmStatusToString(domain::AlarmStatus status) {
     switch (status) {
@@ -127,7 +138,7 @@ std::optional<domain::Alarm> MongoAlarmRepository::findActiveByTrackAndZone(
     filter.append(
         bsoncxx::builder::basic::kvp(TrackIdField, trackId),
         bsoncxx::builder::basic::kvp(ZoneIdField, zoneId),
-        bsoncxx::builder::basic::kvp(StatusField, ActiveStatus)
+        bsoncxx::builder::basic::kvp(StatusField, activeStatusFilter())
     );
 
     auto result = alarmsCollection_.find_one(filter.view());
@@ -136,6 +147,16 @@ std::optional<domain::Alarm> MongoAlarmRepository::findActiveByTrackAndZone(
     }
 
     return mapAlarmDocument(result->view());
+}
+
+std::size_t MongoAlarmRepository::countActiveByZone(const std::string& zoneId) const {
+    bsoncxx::builder::basic::document filter;
+    filter.append(
+        bsoncxx::builder::basic::kvp(ZoneIdField, zoneId),
+        bsoncxx::builder::basic::kvp(StatusField, activeStatusFilter())
+    );
+
+    return static_cast<std::size_t>(alarmsCollection_.count_documents(filter.view()));
 }
 
 void MongoAlarmRepository::create(const domain::Alarm& alarm) {

@@ -77,6 +77,10 @@ securezone.alarms.createIndex({ employeeId: 1 });
 securezone.alarms.createIndex({ machineId: 1 });
 securezone.alarms.createIndex({ status: 1 });
 securezone.alarms.createIndex({ enteredAt: -1 });
+securezone.alarms.createIndex(
+  { trackId: 1, zoneId: 1 },
+  { unique: true, partialFilterExpression: { status: { $in: ["active", "acknowledged"] } } }
+);
 
 securezone.webhook_deliveries.createIndex({ deliveryId: 1 }, { unique: true });
 securezone.webhook_deliveries.createIndex({ alarmId: 1 });

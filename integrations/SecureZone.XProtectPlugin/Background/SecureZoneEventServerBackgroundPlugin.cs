@@ -140,6 +140,25 @@ namespace SecureZone.XProtectPlugin.Background
                     return;
                 }
 
+                if (!decision.duplicate &&
+                    decision.accepted &&
+                    string.Equals(decision.decision, "cleared", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (snapshot.Source == null)
+                    {
+                        EnvironmentManager.Instance.Log(
+                            true,
+                            "SecureZone.DecisionBridge",
+                            "Backend cleared the zone, but the XProtect event has no source. Event '" +
+                            snapshot.EventId + "' was not raised."
+                        );
+                        return;
+                    }
+
+                    violationPublisher.PublishCleared(snapshot, decision);
+                    return;
+                }
+
                 EnvironmentManager.Instance.Log(
                     false,
                     "SecureZone.DecisionBridge",
