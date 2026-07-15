@@ -8,9 +8,6 @@ const collections = [
   "access_policies",
   "zones",
   "machines",
-  "camera_tracks",
-  "track_identity_bindings",
-  "metadata_events",
   "alarms",
   "webhook_deliveries"
 ];
@@ -48,28 +45,10 @@ securezone.zones.createIndex({ cameraId: 1 });
 securezone.zones.createIndex({ type: 1 });
 securezone.zones.createIndex({ status: 1 });
 securezone.zones.createIndex({ relatedMachineId: 1 });
+securezone.zones.createIndex({ xprotectEventName: 1 });
 
 securezone.machines.createIndex({ machineId: 1 }, { unique: true });
 securezone.machines.createIndex({ status: 1 });
-
-securezone.camera_tracks.createIndex({ trackId: 1 }, { unique: true });
-securezone.camera_tracks.createIndex({ cameraId: 1 });
-securezone.camera_tracks.createIndex({ currentZoneId: 1 });
-securezone.camera_tracks.createIndex({ status: 1 });
-securezone.camera_tracks.createIndex({ lastSeenAt: -1 });
-
-securezone.track_identity_bindings.createIndex({ bindingId: 1 }, { unique: true });
-securezone.track_identity_bindings.createIndex({ trackId: 1 });
-securezone.track_identity_bindings.createIndex({ employeeId: 1 });
-securezone.track_identity_bindings.createIndex({ presenceSessionId: 1 });
-securezone.track_identity_bindings.createIndex({ status: 1 });
-
-securezone.metadata_events.createIndex({ eventId: 1 }, { unique: true });
-securezone.metadata_events.createIndex({ cameraId: 1 });
-securezone.metadata_events.createIndex({ trackId: 1 });
-securezone.metadata_events.createIndex({ zoneId: 1 });
-securezone.metadata_events.createIndex({ eventType: 1 });
-securezone.metadata_events.createIndex({ timestamp: -1 });
 
 securezone.alarms.createIndex({ alarmId: 1 }, { unique: true });
 securezone.alarms.createIndex({ zoneId: 1 });
@@ -135,14 +114,9 @@ securezone.zones.updateOne(
       name: "Machine A Dangerous Zone",
       cameraId: "CAM-001",
       type: "dangerous",
-      polygon: [
-        { x: 120, y: 200 },
-        { x: 500, y: 200 },
-        { x: 520, y: 420 },
-        { x: 100, y: 430 }
-      ],
       status: "active",
-      relatedMachineId: "MACHINE-001"
+      relatedMachineId: "MACHINE-001",
+      xprotectEventName: "Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2"
     }
   },
   { upsert: true }

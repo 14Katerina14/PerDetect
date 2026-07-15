@@ -77,24 +77,6 @@ bool optionalBool(
     return element.get_bool().value;
 }
 
-double requiredNumber(
-    bsoncxx::document::view document,
-    const char* fieldName
-) {
-    auto element = requiredElement(document, fieldName);
-
-    switch (element.type()) {
-        case bsoncxx::type::k_int32:
-            return element.get_int32().value;
-        case bsoncxx::type::k_int64:
-            return static_cast<double>(element.get_int64().value);
-        case bsoncxx::type::k_double:
-            return element.get_double().value;
-        default:
-            throw std::runtime_error(std::string{"Expected numeric MongoDB field: "} + fieldName);
-    }
-}
-
 Clock::time_point optionalDate(
     bsoncxx::document::view document,
     const char* fieldName
@@ -204,18 +186,6 @@ domain::AlarmStatus alarmStatusFromString(const std::string& value) {
     return domain::AlarmStatus::Active;
 }
 
-domain::BindingStatus bindingStatusFromString(const std::string& value) {
-    if (value == "confirmed" || value == "bound") {
-        return domain::BindingStatus::Bound;
-    }
-
-    if (value == "expired") {
-        return domain::BindingStatus::Expired;
-    }
-
-    return domain::BindingStatus::Uncertain;
-}
-
 domain::QrCheckInStatus qrCheckinStatusFromString(const std::string& value) {
     if (value == "active") return domain::QrCheckInStatus::Active;
     if (value == "expired") return domain::QrCheckInStatus::Expired;
@@ -243,49 +213,6 @@ std::vector<domain::MachineStatus> machineStatusArray(
     return statuses;
 }
 
-std::vector<domain::Point> polygonFromDocument(
-    bsoncxx::document::view document,
-    const char* fieldName
-) {
-    auto element = requiredElement(document, fieldName);
-    if (element.type() != bsoncxx::type::k_array) {
-        throw std::runtime_error(std::string{"Expected array MongoDB field: "} + fieldName);
-    }
-
-    std::vector<domain::Point> polygon;
-    for (const auto& item : element.get_array().value) {
-        if (item.type() != bsoncxx::type::k_document) {
-            throw std::runtime_error(std::string{"Expected point document in MongoDB array: "} + fieldName);
-        }
-
-        const auto pointDocument = item.get_document().view();
-        domain::Point point{};
-        point.x = requiredNumber(pointDocument, "x");
-        point.y = requiredNumber(pointDocument, "y");
-        polygon.push_back(point);
-    }
-
-    return polygon;
-}
-
-domain::BoundingBox bboxFromDocument(
-    bsoncxx::document::view document,
-    const char* fieldName
-) {
-    auto element = requiredElement(document, fieldName);
-    if (element.type() != bsoncxx::type::k_document) {
-        throw std::runtime_error(std::string{"Expected document MongoDB field: "} + fieldName);
-    }
-
-    const auto bboxDocument = element.get_document().view();
-    domain::BoundingBox bbox{};
-    bbox.x = requiredNumber(bboxDocument, "x");
-    bbox.y = requiredNumber(bboxDocument, "y");
-    bbox.width = requiredNumber(bboxDocument, "width");
-    bbox.height = requiredNumber(bboxDocument, "height");
-    return bbox;
-}
-
 }
 
 domain::Employee mapEmployeeDocument(bsoncxx::document::view document) {
@@ -305,9 +232,9 @@ domain::Zone mapZoneDocument(bsoncxx::document::view document) {
     zone.name = requiredString(document, "name");
     zone.cameraId = requiredString(document, "cameraId");
     zone.type = zoneTypeFromString(requiredString(document, "type"));
-    zone.polygon = polygonFromDocument(document, "polygon");
     zone.status = zoneStatusFromString(requiredString(document, "status"));
     zone.relatedMachineId = optionalString(document, "relatedMachineId");
+    zone.xprotectEventName = optionalString(document, "xprotectEventName");
     return zone;
 }
 
@@ -350,46 +277,6 @@ domain::Alarm mapAlarmDocument(bsoncxx::document::view document) {
     }
     alarm.message = optionalString(document, "message");
     return alarm;
-}
-
-domain::CameraTrack mapCameraTrackDocument(bsoncxx::document::view document) {
-    domain::CameraTrack cameraTrack{};
-    cameraTrack.trackId = requiredString(document, "trackId");
-    cameraTrack.cameraId = requiredString(document, "cameraId");
-    cameraTrack.firstSeenAt = requiredDate(document, "firstSeenAt");
-    cameraTrack.lastSeenAt = requiredDate(document, "lastSeenAt");
-    cameraTrack.currentZoneId = optionalString(document, "currentZoneId");
-    cameraTrack.objectClass = requiredString(document, "objectClass");
-    cameraTrack.bbox = bboxFromDocument(document, "bbox");
-    cameraTrack.status = requiredString(document, "status");
-    return cameraTrack;
-}
-
-domain::MetadataEvent mapMetadataEventDocument(bsoncxx::document::view document) {
-    domain::MetadataEvent metadataEvent{};
-    metadataEvent.eventId = requiredString(document, "eventId");
-    metadataEvent.cameraId = requiredString(document, "cameraId");
-    metadataEvent.trackId = requiredString(document, "trackId");
-    metadataEvent.timestamp = requiredDate(document, "timestamp");
-    metadataEvent.objectClass = requiredString(document, "objectClass");
-    metadataEvent.bbox = bboxFromDocument(document, "bbox");
-    metadataEvent.zoneId = optionalString(document, "zoneId");
-    metadataEvent.eventType = requiredString(document, "eventType");
-    return metadataEvent;
-}
-
-domain::TrackIdentityBinding mapTrackIdentityBindingDocument(
-    bsoncxx::document::view document
-) {
-    domain::TrackIdentityBinding binding{};
-    binding.bindingId = requiredString(document, "bindingId");
-    binding.trackId = requiredString(document, "trackId");
-    binding.employeeId = requiredString(document, "employeeId");
-    binding.presenceSessionId = requiredString(document, "presenceSessionId");
-    binding.confidence = requiredNumber(document, "confidence");
-    binding.boundAt = requiredDate(document, "boundAt");
-    binding.status = bindingStatusFromString(requiredString(document, "status"));
-    return binding;
 }
 
 domain::QrCheckin mapQrCheckinDocument(bsoncxx::document::view document) {
