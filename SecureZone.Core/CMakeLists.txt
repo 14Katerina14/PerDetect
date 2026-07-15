@@ -7,9 +7,7 @@ add_library(SecureZoneCore
     src/decision/AccessPolicyEvaluator.cpp
     src/decision/DecisionContextLoader.cpp
     src/decision/DecisionEngine.cpp
-    src/geometry/ZoneGeometryService.cpp
     src/identity/RolePermissionService.cpp
-    src/identity/TrackAssociationService.cpp
     src/machine/MachineStatusService.cpp
     src/presence/PresenceSessionService.cpp
     src/webhook/WebhookNotificationService.cpp
@@ -18,9 +16,7 @@ target_compile_features(SecureZoneCore PUBLIC cxx_std_17)
 target_include_directories(SecureZoneCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 set(SECUREZONE_CORE_TESTS
-    ZoneGeometryTests
     AccessPolicyEvaluatorTests
-    TrackAssociationTests
     AlarmLifecycleTests
     AlarmPersistenceTests
     RolePermissionTests
