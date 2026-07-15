@@ -32,18 +32,20 @@ void qrRouteIsReservedForQrImplementation() {
     assert(response.body.find("not_implemented") != std::string::npos);
 }
 
-void xprotectRouteIsReservedForEventImplementation() {
+void xprotectRouteAcceptsWiseAiLineCrossingEvent() {
     const ApiServer server{};
 
     const auto response = server.handle({
         "POST",
         "/api/xprotect/line-crossing",
-        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2"})",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T (192.168.0.101) - Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
         {}
     });
 
-    assert(response.statusCode == 501);
-    assert(response.body.find("not_implemented") != std::string::npos);
+    assert(response.statusCode == 202);
+    assert(response.body.find(R"("accepted":true)") != std::string::npos);
+    assert(response.body.find("xprotect_line_crossing") != std::string::npos);
+    assert(response.body.find("Hanwha Vision TNO-C4052T") != std::string::npos);
 }
 
 void routerReturnsNotFoundForUnknownPath() {
@@ -106,12 +108,12 @@ void applicationRoutesXProtectLineCrossingRequests() {
     const auto response = app.handle({
         "POST",
         "/api/xprotect/line-crossing",
-        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2"})",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T (192.168.0.101) - Camera 1"})",
         {}
     });
 
-    assert(response.statusCode == 501);
-    assert(response.body.find("XProtect LineCrossing endpoint") != std::string::npos);
+    assert(response.statusCode == 202);
+    assert(response.body.find(R"("status":"accepted")") != std::string::npos);
 }
 
 void applicationKeepsSettingsAndStartupSummary() {
@@ -130,12 +132,40 @@ void applicationKeepsSettingsAndStartupSummary() {
     assert(app.startupSummary().find("securezone_local") != std::string::npos);
 }
 
+void xprotectLineCrossingRejectsMissingSource() {
+    const ApiApplication app{};
+
+    const auto response = app.handle({
+        "POST",
+        "/api/xprotect/line-crossing",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2"})",
+        {}
+    });
+
+    assert(response.statusCode == 400);
+    assert(response.body.find("missing_source_name") != std::string::npos);
+}
+
+void xprotectLineCrossingRejectsUnsupportedEvents() {
+    const ApiApplication app{};
+
+    const auto response = app.handle({
+        "POST",
+        "/api/xprotect/line-crossing",
+        R"({"eventName":"Device.Offline","sourceName":"Camera 1"})",
+        {}
+    });
+
+    assert(response.statusCode == 400);
+    assert(response.body.find("unsupported_xprotect_event") != std::string::npos);
+}
+
 }
 
 int main() {
     healthRouteReturnsOk();
     qrRouteIsReservedForQrImplementation();
-    xprotectRouteIsReservedForEventImplementation();
+    xprotectRouteAcceptsWiseAiLineCrossingEvent();
     routerReturnsNotFoundForUnknownPath();
     routerReturnsMethodNotAllowedForKnownPathWithWrongMethod();
     settingsCanBePassedToServer();
@@ -143,4 +173,6 @@ int main() {
     applicationRoutesQrCheckInRequests();
     applicationRoutesXProtectLineCrossingRequests();
     applicationKeepsSettingsAndStartupSummary();
+    xprotectLineCrossingRejectsMissingSource();
+    xprotectLineCrossingRejectsUnsupportedEvents();
 }

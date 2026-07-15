@@ -16,6 +16,10 @@ HttpResponse jsonCreated(std::string body) {
     return jsonResponse(201, std::move(body));
 }
 
+HttpResponse jsonAccepted(std::string body) {
+    return jsonResponse(202, std::move(body));
+}
+
 HttpResponse jsonBadRequest(std::string body) {
     return jsonResponse(400, std::move(body));
 }
