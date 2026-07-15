@@ -7,7 +7,6 @@
 #include <chrono>
 #include <stdexcept>
 #include <string>
-#include <string_view>
 #include <vector>
 
 namespace securezone::infrastructure::mongodb {
@@ -16,7 +15,8 @@ namespace {
 
 using Clock = std::chrono::system_clock;
 
-std::string toString(std::string_view value) {
+template <typename StringView>
+std::string toString(StringView value) {
     return std::string{value.data(), value.size()};
 }
 
@@ -37,7 +37,7 @@ std::string requiredString(
     const char* fieldName
 ) {
     auto element = requiredElement(document, fieldName);
-    if (element.type() != bsoncxx::type::k_utf8) {
+    if (element.type() != bsoncxx::type::k_string) {
         throw std::runtime_error(std::string{"Expected string MongoDB field: "} + fieldName);
     }
 
@@ -53,7 +53,7 @@ std::string optionalString(
         return {};
     }
 
-    if (element.type() != bsoncxx::type::k_utf8) {
+    if (element.type() != bsoncxx::type::k_string) {
         throw std::runtime_error(std::string{"Expected string MongoDB field: "} + fieldName);
     }
 
@@ -116,7 +116,7 @@ std::vector<std::string> stringArray(
 
     std::vector<std::string> values;
     for (const auto& item : element.get_array().value) {
-        if (item.type() != bsoncxx::type::k_utf8) {
+        if (item.type() != bsoncxx::type::k_string) {
             throw std::runtime_error(std::string{"Expected string item in MongoDB array: "} + fieldName);
         }
 
