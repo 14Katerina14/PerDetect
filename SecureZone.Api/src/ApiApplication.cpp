@@ -1,6 +1,9 @@
 #include "securezone/api/ApiApplication.h"
 
 #include "securezone/api/runtime/ApiRuntimeComposition.h"
+#ifdef SECUREZONE_WITH_MONGODB_INFRA
+#include "securezone/api/runtime/MongoApiRuntimeComposition.h"
+#endif
 
 #include <sstream>
 #include <utility>
@@ -52,9 +55,13 @@ std::string ApiApplication::startupSummary() const {
 }
 
 ApiApplication createApiApplicationFromEnvironment() {
+#ifdef SECUREZONE_WITH_MONGODB_INFRA
+    return createMongoApiApplicationFromEnvironment();
+#else
     ApiRuntimeConfig config{};
     config.apiSettings = loadApiSettingsFromEnvironment();
     return createComposedApiApplication(std::move(config));
+#endif
 }
 
 }

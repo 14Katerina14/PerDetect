@@ -120,6 +120,25 @@ public:
         return zone;
     }
 
+    std::optional<domain::Zone> findActiveByXProtectEventName(
+        const std::string& xprotectEventName
+    ) const override {
+        const auto match = std::find_if(
+            zones_.begin(),
+            zones_.end(),
+            [&xprotectEventName](const domain::Zone& zone) {
+                return zone.xprotectEventName == xprotectEventName
+                    && zone.status == domain::ZoneStatus::Active;
+            }
+        );
+
+        if (match == zones_.end()) {
+            return std::nullopt;
+        }
+
+        return *match;
+    }
+
     bool save(const domain::Zone& zone) override {
         const auto match = find(zone.zoneId);
         if (match == zones_.end()) {
@@ -228,7 +247,7 @@ public:
     std::optional<domain::PresenceSession> findActiveByZoneAt(
         const std::string& zoneId,
         std::chrono::system_clock::time_point at
-    ) const {
+    ) const override {
         const auto match = std::find_if(
             sessions_.begin(),
             sessions_.end(),
@@ -327,7 +346,7 @@ struct ApiRuntimeComposition::State {
             return zones.findActiveByZoneId(mapping->zoneId);
         }
 
-        return std::nullopt;
+        return zones.findActiveByXProtectEventName(command.eventName);
     }
 
     ApiRuntimeConfig config;

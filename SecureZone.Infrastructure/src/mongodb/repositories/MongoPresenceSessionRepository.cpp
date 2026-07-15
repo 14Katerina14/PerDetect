@@ -2,6 +2,7 @@
 
 #include <bsoncxx/builder/basic/document.hpp>
 #include <bsoncxx/builder/basic/kvp.hpp>
+#include <bsoncxx/builder/basic/sub_document.hpp>
 #include <bsoncxx/types.hpp>
 
 #include <chrono>
@@ -89,6 +90,36 @@ std::optional<domain::PresenceSession> MongoPresenceSessionRepository::findActiv
         bsoncxx::builder::basic::kvp(EmployeeIdField, employeeId),
         bsoncxx::builder::basic::kvp(ZoneIdField, zoneId),
         bsoncxx::builder::basic::kvp(StatusField, ActiveStatus)
+    );
+
+    auto result = presenceSessionsCollection_.find_one(filter.view());
+    if (!result) {
+        return std::nullopt;
+    }
+
+    return mapPresenceSessionDocument(result->view());
+}
+
+std::optional<domain::PresenceSession> MongoPresenceSessionRepository::findActiveByZoneAt(
+    const std::string& zoneId,
+    Clock::time_point at
+) const {
+    bsoncxx::builder::basic::document filter;
+    filter.append(
+        bsoncxx::builder::basic::kvp(ZoneIdField, zoneId),
+        bsoncxx::builder::basic::kvp(StatusField, ActiveStatus),
+        bsoncxx::builder::basic::kvp(
+            "startedAt",
+            [at](bsoncxx::builder::basic::sub_document subDocument) {
+                subDocument.append(bsoncxx::builder::basic::kvp("$lte", toBsonDate(at)));
+            }
+        ),
+        bsoncxx::builder::basic::kvp(
+            "expiresAt",
+            [at](bsoncxx::builder::basic::sub_document subDocument) {
+                subDocument.append(bsoncxx::builder::basic::kvp("$gte", toBsonDate(at)));
+            }
+        )
     );
 
     auto result = presenceSessionsCollection_.find_one(filter.view());

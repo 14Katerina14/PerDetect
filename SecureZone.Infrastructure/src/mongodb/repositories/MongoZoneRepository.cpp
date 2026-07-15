@@ -15,6 +15,7 @@ namespace {
 constexpr char ZoneIdField[] = "zoneId";
 constexpr char StatusField[] = "status";
 constexpr char ActiveStatus[] = "active";
+constexpr char XProtectEventNameField[] = "xprotectEventName";
 
 const char* zoneTypeToString(domain::ZoneType type) {
     switch (type) {
@@ -74,6 +75,23 @@ std::optional<domain::Zone> MongoZoneRepository::findActiveByZoneId(
     bsoncxx::builder::basic::document filter;
     filter.append(
         bsoncxx::builder::basic::kvp(ZoneIdField, zoneId),
+        bsoncxx::builder::basic::kvp(StatusField, ActiveStatus)
+    );
+
+    auto result = zonesCollection_.find_one(filter.view());
+    if (!result) {
+        return std::nullopt;
+    }
+
+    return mapZoneDocument(result->view());
+}
+
+std::optional<domain::Zone> MongoZoneRepository::findActiveByXProtectEventName(
+    const std::string& xprotectEventName
+) const {
+    bsoncxx::builder::basic::document filter;
+    filter.append(
+        bsoncxx::builder::basic::kvp(XProtectEventNameField, xprotectEventName),
         bsoncxx::builder::basic::kvp(StatusField, ActiveStatus)
     );
 

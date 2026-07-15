@@ -17,6 +17,15 @@ public:
         const std::string& zoneId
     ) const = 0;
 
+    virtual std::optional<domain::PresenceSession> findActiveByZoneAt(
+        const std::string& zoneId,
+        std::chrono::system_clock::time_point at
+    ) const {
+        (void)zoneId;
+        (void)at;
+        return std::nullopt;
+    }
+
     virtual void create(const domain::PresenceSession& presenceSession) = 0;
 
     virtual void extend(

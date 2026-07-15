@@ -20,6 +20,11 @@ public:
         const std::string& zoneId
     ) const override;
 
+    std::optional<domain::PresenceSession> findActiveByZoneAt(
+        const std::string& zoneId,
+        std::chrono::system_clock::time_point at
+    ) const override;
+
     void create(const domain::PresenceSession& presenceSession) override;
 
     void extend(

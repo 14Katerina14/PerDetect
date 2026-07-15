@@ -19,6 +19,13 @@ public:
         const std::string& zoneId
     ) const = 0;
 
+    virtual std::optional<domain::Zone> findActiveByXProtectEventName(
+        const std::string& xprotectEventName
+    ) const {
+        (void)xprotectEventName;
+        return std::nullopt;
+    }
+
     virtual bool save(const domain::Zone& zone) = 0;
 };
 

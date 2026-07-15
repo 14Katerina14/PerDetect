@@ -22,6 +22,10 @@ public:
         const std::string& zoneId
     ) const override;
 
+    std::optional<domain::Zone> findActiveByXProtectEventName(
+        const std::string& xprotectEventName
+    ) const override;
+
     bool save(const domain::Zone& zone) override;
 
 private:
