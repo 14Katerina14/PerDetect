@@ -10,9 +10,16 @@
 
 namespace securezone::api {
 
+struct ApiRouteHandlers {
+    QrRoutes::CheckInHandler qrCheckInHandler;
+    XProtectEventRoutes::LineCrossingHandler lineCrossingHandler;
+};
+
 class ApiServer {
 public:
     explicit ApiServer(ApiSettings settings = {});
+    ApiServer(ApiSettings settings, QrRoutes::CheckInHandler qrCheckInHandler);
+    ApiServer(ApiSettings settings, ApiRouteHandlers handlers);
 
     const ApiSettings& settings() const;
     HttpResponse handle(const HttpRequest& request) const;

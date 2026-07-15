@@ -1,5 +1,7 @@
 #include "securezone/api/ApiApplication.h"
 
+#include "securezone/api/runtime/ApiRuntimeComposition.h"
+
 #include <sstream>
 #include <utility>
 
@@ -9,6 +11,24 @@ ApiApplication::ApiApplication(ApiSettings settings, ApiApplicationInfo info)
     : settings_{std::move(settings)},
       info_{std::move(info)},
       server_{settings_} {
+}
+
+ApiApplication::ApiApplication(
+    ApiSettings settings,
+    ApiApplicationInfo info,
+    QrRoutes::CheckInHandler qrCheckInHandler
+) : settings_{std::move(settings)},
+    info_{std::move(info)},
+    server_{settings_, std::move(qrCheckInHandler)} {
+}
+
+ApiApplication::ApiApplication(
+    ApiSettings settings,
+    ApiApplicationInfo info,
+    ApiRouteHandlers handlers
+) : settings_{std::move(settings)},
+    info_{std::move(info)},
+    server_{settings_, std::move(handlers)} {
 }
 
 const ApiSettings& ApiApplication::settings() const {
@@ -32,7 +52,9 @@ std::string ApiApplication::startupSummary() const {
 }
 
 ApiApplication createApiApplicationFromEnvironment() {
-    return ApiApplication{loadApiSettingsFromEnvironment(), {}};
+    ApiRuntimeConfig config{};
+    config.apiSettings = loadApiSettingsFromEnvironment();
+    return createComposedApiApplication(std::move(config));
 }
 
 }
