@@ -3,20 +3,22 @@
 namespace securezone::api {
 
 ApiServer::ApiServer(ApiSettings settings)
-    : settings_{std::move(settings)} {
+    : settings_{std::move(settings)},
+      xprotectEventRoutes_{{}, settings_.xprotectApiKey} {
     registerRoutes();
 }
 
 ApiServer::ApiServer(ApiSettings settings, QrRoutes::CheckInHandler qrCheckInHandler)
     : settings_{std::move(settings)},
-      qrRoutes_{std::move(qrCheckInHandler)} {
+      qrRoutes_{std::move(qrCheckInHandler)},
+      xprotectEventRoutes_{{}, settings_.xprotectApiKey} {
     registerRoutes();
 }
 
 ApiServer::ApiServer(ApiSettings settings, ApiRouteHandlers handlers)
     : settings_{std::move(settings)},
       qrRoutes_{std::move(handlers.qrCheckInHandler)},
-      xprotectEventRoutes_{std::move(handlers.lineCrossingHandler)} {
+      xprotectEventRoutes_{std::move(handlers.lineCrossingHandler), settings_.xprotectApiKey} {
     registerRoutes();
 }
 

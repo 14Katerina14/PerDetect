@@ -10,6 +10,7 @@ struct ApiSettings {
     int port{8080};
     std::string mongoConnectionString;
     std::string mongoDatabaseName{"securezone"};
+    std::string xprotectApiKey;
     std::chrono::minutes qrPresenceDuration{2};
 };
 

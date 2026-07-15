@@ -73,6 +73,23 @@ Clock::time_point compositionEventTime() {
     return *XProtectLineCrossingHandler::parseReceivedAt("2026-07-15T10:30:00Z");
 }
 
+void xprotectTimestampParserAcceptsDotNetRoundTripUtc() {
+    const auto wholeSecond = XProtectLineCrossingHandler::parseReceivedAt(
+        "2026-07-15T10:30:00Z"
+    );
+    const auto dotNetRoundTrip = XProtectLineCrossingHandler::parseReceivedAt(
+        "2026-07-15T10:30:00.1234567Z"
+    );
+
+    assert(wholeSecond.has_value());
+    assert(dotNetRoundTrip.has_value());
+    assert(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(
+            *dotNetRoundTrip - *wholeSecond
+        ).count() == 123456700
+    );
+}
+
 domain::PresenceSession activeCompositionPresenceSession() {
     auto session = activePresenceSession();
     session.startedAt = compositionEventTime() - std::chrono::minutes{5};
@@ -176,6 +193,7 @@ void xprotectRouteCallsConfiguredHandler() {
             {},
             [&called](const XProtectLineCrossingEvent& event) {
                 called = true;
+                assert(event.eventId == "EVENT-001");
                 assert(event.eventName == "Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2");
                 assert(event.sourceName == "Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1");
                 assert(event.receivedAt == "2026-07-15T10:30:00Z");
@@ -195,7 +213,7 @@ void xprotectRouteCallsConfiguredHandler() {
     const auto response = server.handle({
         "POST",
         "/api/xprotect/line-crossing",
-        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
+        R"({"eventId":"EVENT-001","eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
         {}
     });
 
@@ -204,7 +222,87 @@ void xprotectRouteCallsConfiguredHandler() {
     assert(response.body.find(R"("accepted":true)") != std::string::npos);
     assert(response.body.find(R"("decision":"violation")") != std::string::npos);
     assert(response.body.find("No active presence session") != std::string::npos);
+    assert(response.body.find(R"("eventId":"EVENT-001")") != std::string::npos);
     assert(response.body.find("xprotect_line_crossing") != std::string::npos);
+}
+
+void xprotectRouteRequiresConfiguredApiKey() {
+    ApiSettings settings{};
+    settings.xprotectApiKey = "test-only-api-key";
+    bool called = false;
+    ApiServer server{
+        settings,
+        ApiRouteHandlers{
+            {},
+            [&called](const XProtectLineCrossingEvent&) {
+                called = true;
+                return XProtectLineCrossingResult{
+                    true,
+                    "processed",
+                    "violation",
+                    "ZONE-001",
+                    {},
+                    {},
+                    "No active QR presence session found for zone."
+                };
+            }
+        }
+    };
+
+    const std::string body =
+        R"({"eventId":"EVENT-001","eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Camera 1","receivedAt":"2026-07-15T10:30:00Z"})";
+
+    const auto unauthorized = server.handle({
+        "POST",
+        "/api/xprotect/line-crossing",
+        body,
+        {}
+    });
+
+    assert(unauthorized.statusCode == 401);
+    assert(!called);
+
+    const auto authorized = server.handle({
+        "POST",
+        "/api/xprotect/line-crossing",
+        body,
+        {{"X-SecureZone-Api-Key", "test-only-api-key"}}
+    });
+
+    assert(authorized.statusCode == 200);
+    assert(called);
+    assert(authorized.body.find(R"("decision":"violation")") != std::string::npos);
+}
+
+void xprotectRouteDoesNotEvaluateDuplicateEventTwice() {
+    int evaluations = 0;
+    xprotect::XProtectLineCrossingService service{
+        [&evaluations](const xprotect::XProtectLineCrossingCommand&) {
+            ++evaluations;
+            return std::optional<domain::Zone>{mappedXProtectZone()};
+        },
+        [](const domain::Zone&, Clock::time_point) {
+            return std::optional<domain::PresenceSession>{};
+        }
+    };
+    XProtectLineCrossingHandler handler{service, fixedXProtectEventTime};
+    ApiServer server{{}, ApiRouteHandlers{{}, handler}};
+
+    const HttpRequest request{
+        "POST",
+        "/api/xprotect/line-crossing",
+        R"({"eventId":"EVENT-DUPLICATE","eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
+        {}
+    };
+
+    const auto first = server.handle(request);
+    const auto duplicate = server.handle(request);
+
+    assert(evaluations == 1);
+    assert(first.statusCode == 200);
+    assert(first.body.find(R"("duplicate":false)") != std::string::npos);
+    assert(duplicate.statusCode == 200);
+    assert(duplicate.body.find(R"("duplicate":true)") != std::string::npos);
 }
 
 void routerReturnsNotFoundForUnknownPath() {
@@ -624,11 +722,14 @@ void xprotectLineCrossingRejectsUnsupportedEvents() {
 }
 
 int main() {
+    xprotectTimestampParserAcceptsDotNetRoundTripUtc();
     healthRouteReturnsOk();
     qrRouteRequiresConfiguredService();
     qrRouteCallsConfiguredCheckInHandler();
     xprotectRouteRequiresConfiguredHandler();
     xprotectRouteCallsConfiguredHandler();
+    xprotectRouteRequiresConfiguredApiKey();
+    xprotectRouteDoesNotEvaluateDuplicateEventTwice();
     routerReturnsNotFoundForUnknownPath();
     routerReturnsMethodNotAllowedForKnownPathWithWrongMethod();
     settingsCanBePassedToServer();

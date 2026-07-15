@@ -50,11 +50,24 @@ int httpStatusForLineCrossingResult(const XProtectLineCrossingResult& result) {
 
 }
 
-XProtectEventRoutes::XProtectEventRoutes(LineCrossingHandler lineCrossingHandler)
-    : lineCrossingHandler_{std::move(lineCrossingHandler)} {
+XProtectEventRoutes::XProtectEventRoutes(
+    LineCrossingHandler lineCrossingHandler,
+    std::string apiKey
+) : lineCrossingHandler_{std::move(lineCrossingHandler)},
+    apiKey_{std::move(apiKey)} {
 }
 
 HttpResponse XProtectEventRoutes::handleLineCrossing(const HttpRequest& request) const {
+    if (!apiKey_.empty()) {
+        const auto apiKey = request.headers.find("X-SecureZone-Api-Key");
+        if (apiKey == request.headers.end() || apiKey->second != apiKey_) {
+            return jsonResponse(
+                401,
+                R"({"accepted":false,"status":"unauthorized","message":"A valid XProtect API key is required."})"
+            );
+        }
+    }
+
     const auto result = parseXProtectLineCrossingEvent(request.body);
     if (!result.event) {
         return jsonBadRequest(
@@ -84,7 +97,11 @@ HttpResponse XProtectEventRoutes::handleLineCrossing(const HttpRequest& request)
          << jsonEscape(handlerResult.employeeId)
          << R"(","message":")"
          << jsonEscape(handlerResult.message)
-         << R"(","eventType":"xprotect_line_crossing","eventName":")"
+         << R"(","eventId":")"
+         << jsonEscape(result.event->eventId)
+         << R"(","duplicate":)"
+         << (handlerResult.duplicate ? "true" : "false")
+         << R"(,"eventType":"xprotect_line_crossing","eventName":")"
          << jsonEscape(result.event->eventName)
          << R"(","sourceName":")"
          << jsonEscape(result.event->sourceName)

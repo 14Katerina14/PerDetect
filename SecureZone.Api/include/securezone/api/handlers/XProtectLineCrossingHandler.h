@@ -5,6 +5,7 @@
 
 #include <chrono>
 #include <functional>
+#include <memory>
 #include <optional>
 #include <string>
 
@@ -25,8 +26,11 @@ public:
     static std::optional<Clock::time_point> parseReceivedAt(const std::string& value);
 
 private:
+    struct DecisionCache;
+
     xprotect::XProtectLineCrossingService& service_;
     ReceivedAtParser receivedAtParser_;
+    std::shared_ptr<DecisionCache> decisionCache_;
 };
 
 }

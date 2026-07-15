@@ -6,6 +6,7 @@
 namespace securezone::api {
 
 struct XProtectLineCrossingEvent {
+    std::string eventId;
     std::string eventName;
     std::string sourceName;
     std::string receivedAt;
@@ -24,6 +25,7 @@ struct XProtectLineCrossingResult {
     std::string sessionId;
     std::string employeeId;
     std::string message;
+    bool duplicate{};
 };
 
 XProtectLineCrossingParseResult parseXProtectLineCrossingEvent(const std::string& body);
