@@ -7,6 +7,12 @@ ApiServer::ApiServer(ApiSettings settings)
     registerRoutes();
 }
 
+ApiServer::ApiServer(ApiSettings settings, QrRoutes::CheckInHandler qrCheckInHandler)
+    : settings_{std::move(settings)},
+      qrRoutes_{std::move(qrCheckInHandler)} {
+    registerRoutes();
+}
+
 const ApiSettings& ApiServer::settings() const {
     return settings_;
 }

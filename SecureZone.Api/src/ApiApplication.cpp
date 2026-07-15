@@ -11,6 +11,15 @@ ApiApplication::ApiApplication(ApiSettings settings, ApiApplicationInfo info)
       server_{settings_} {
 }
 
+ApiApplication::ApiApplication(
+    ApiSettings settings,
+    ApiApplicationInfo info,
+    QrRoutes::CheckInHandler qrCheckInHandler
+) : settings_{std::move(settings)},
+    info_{std::move(info)},
+    server_{settings_, std::move(qrCheckInHandler)} {
+}
+
 const ApiSettings& ApiApplication::settings() const {
     return settings_;
 }

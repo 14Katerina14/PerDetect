@@ -13,6 +13,7 @@ namespace securezone::api {
 class ApiServer {
 public:
     explicit ApiServer(ApiSettings settings = {});
+    ApiServer(ApiSettings settings, QrRoutes::CheckInHandler qrCheckInHandler);
 
     const ApiSettings& settings() const;
     HttpResponse handle(const HttpRequest& request) const;

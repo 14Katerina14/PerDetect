@@ -2,6 +2,8 @@
 #include "securezone/api/http/Router.h"
 
 #include <cassert>
+#include <utility>
+#include <vector>
 #include <string>
 
 namespace {
@@ -18,7 +20,7 @@ void healthRouteReturnsOk() {
     assert(response.body == R"({"status":"ok","service":"securezone-api"})");
 }
 
-void qrRouteIsReservedForQrImplementation() {
+void qrRouteRequiresConfiguredService() {
     const ApiServer server{};
 
     const auto response = server.handle({
@@ -28,8 +30,40 @@ void qrRouteIsReservedForQrImplementation() {
         {}
     });
 
-    assert(response.statusCode == 501);
-    assert(response.body.find("not_implemented") != std::string::npos);
+    assert(response.statusCode == 503);
+    assert(response.body.find("service_unavailable") != std::string::npos);
+}
+
+void qrRouteCallsConfiguredCheckInHandler() {
+    bool called = false;
+    ApiServer server{
+        {},
+        [&called](const securezone::qr::QrCheckInCommand& command) {
+            called = true;
+            assert(command.employeeId == "EMP-001");
+            assert(command.zoneId == "ZONE-001");
+            assert(command.scannedByUserId == "APP-SCANNER-001");
+            return securezone::qr::QrCheckInResult{
+                true,
+                "started",
+                "SESSION-001",
+                {}
+            };
+        }
+    };
+
+    const auto response = server.handle({
+        "POST",
+        "/api/qr/check-in",
+        R"({"employeeId":"EMP-001","zoneId":"ZONE-001","scannedByUserId":"APP-SCANNER-001"})",
+        {}
+    });
+
+    assert(called);
+    assert(response.statusCode == 201);
+    assert(response.body.find(R"("accepted":true)") != std::string::npos);
+    assert(response.body.find(R"("status":"started")") != std::string::npos);
+    assert(response.body.find(R"("sessionId":"SESSION-001")") != std::string::npos);
 }
 
 void xprotectRouteAcceptsWiseAiLineCrossingEvent() {
@@ -98,8 +132,73 @@ void applicationRoutesQrCheckInRequests() {
         {}
     });
 
-    assert(response.statusCode == 501);
-    assert(response.body.find("QR check-in endpoint") != std::string::npos);
+    assert(response.statusCode == 503);
+    assert(response.body.find("QR check-in service is not configured") != std::string::npos);
+}
+
+void applicationRoutesQrCheckInRequestsToConfiguredHandler() {
+    ApiApplication app{
+        {},
+        {},
+        [](const securezone::qr::QrCheckInCommand& command) {
+            assert(command.employeeId == "EMP-001");
+            assert(command.zoneId == "ZONE-001");
+            assert(command.scannedByUserId == "APP-SCANNER-001");
+            return securezone::qr::QrCheckInResult{
+                true,
+                "extended",
+                "SESSION-001",
+                {}
+            };
+        }
+    };
+
+    const auto response = app.handle({
+        "POST",
+        "/api/qr/check-in",
+        R"({"employeeId":"EMP-001","zoneId":"ZONE-001","scannedByUserId":"APP-SCANNER-001"})",
+        {}
+    });
+
+    assert(response.statusCode == 200);
+    assert(response.body.find(R"("status":"extended")") != std::string::npos);
+}
+
+void qrRouteMapsRejectedStatusesToHttpResponses() {
+    const std::vector<std::pair<std::string, int>> cases{
+        {"invalid_request", 400},
+        {"employee_not_found", 404},
+        {"zone_not_found", 404},
+        {"scanner_not_found", 404},
+        {"employee_inactive", 403},
+        {"zone_inactive", 403},
+        {"scanner_not_allowed", 403}
+    };
+
+    for (const auto& testCase : cases) {
+        ApiServer server{
+            {},
+            [&testCase](const securezone::qr::QrCheckInCommand&) {
+                return securezone::qr::QrCheckInResult{
+                    false,
+                    testCase.first,
+                    {},
+                    "mapped message"
+                };
+            }
+        };
+
+        const auto response = server.handle({
+            "POST",
+            "/api/qr/check-in",
+            R"({"employeeId":"EMP-001","zoneId":"ZONE-001","scannedByUserId":"APP-SCANNER-001"})",
+            {}
+        });
+
+        assert(response.statusCode == testCase.second);
+        assert(response.body.find(testCase.first) != std::string::npos);
+        assert(response.body.find("mapped message") != std::string::npos);
+    }
 }
 
 void applicationRoutesXProtectLineCrossingRequests() {
@@ -164,13 +263,16 @@ void xprotectLineCrossingRejectsUnsupportedEvents() {
 
 int main() {
     healthRouteReturnsOk();
-    qrRouteIsReservedForQrImplementation();
+    qrRouteRequiresConfiguredService();
+    qrRouteCallsConfiguredCheckInHandler();
     xprotectRouteAcceptsWiseAiLineCrossingEvent();
     routerReturnsNotFoundForUnknownPath();
     routerReturnsMethodNotAllowedForKnownPathWithWrongMethod();
     settingsCanBePassedToServer();
     applicationRoutesHealthRequests();
     applicationRoutesQrCheckInRequests();
+    applicationRoutesQrCheckInRequestsToConfiguredHandler();
+    qrRouteMapsRejectedStatusesToHttpResponses();
     applicationRoutesXProtectLineCrossingRequests();
     applicationKeepsSettingsAndStartupSummary();
     xprotectLineCrossingRejectsMissingSource();

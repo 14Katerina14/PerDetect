@@ -17,6 +17,11 @@ struct ApiApplicationInfo {
 class ApiApplication {
 public:
     explicit ApiApplication(ApiSettings settings = {}, ApiApplicationInfo info = {});
+    ApiApplication(
+        ApiSettings settings,
+        ApiApplicationInfo info,
+        QrRoutes::CheckInHandler qrCheckInHandler
+    );
 
     const ApiSettings& settings() const;
     const ApiApplicationInfo& info() const;
