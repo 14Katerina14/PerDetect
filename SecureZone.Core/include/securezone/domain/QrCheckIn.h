@@ -8,8 +8,8 @@ namespace securezone::domain {
 enum class QrCheckInStatus { Active, Expired, Revoked };
 
 // A QR scan is both the audit record and the time-bounded identity evidence
-// used for track association.  The alias below keeps the repository naming
-// compatible without creating a second, divergent model.
+// used when evaluating XProtect/WiseAI zone entry events. The alias below keeps
+// repository naming compatible without creating a second, divergent model.
 struct QrCheckIn {
     std::string checkInId;
     std::string employeeId;

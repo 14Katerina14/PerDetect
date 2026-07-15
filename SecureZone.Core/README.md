@@ -17,12 +17,12 @@ acknowledged, and resolved.
 `DecisionEngine` evaluates a `DecisionContext` and returns an `AccessDecision`.
 The result includes both the business outcome and the required alarm action:
 
-- `PendingIdentity` while the QR-to-track identity grace period is active;
+- `PendingIdentity` while the QR identity grace period is active;
 - `UnknownIdentity` or `Violation` when an alarm must be created;
 - `Allowed` with `shouldClearAlarm` when no zone entry event is active for a zone
   that has an active alarm.
 
 `AlarmPersistenceService` uses `IAlarmRepository` to create at most one active
-alarm for a track and zone, and resolves it when the decision requests clearing.
+alarm for a zone entry event and zone, and resolves it when the decision requests clearing.
 An alarm records its decision reason and resolution timestamp. The core test suite
 covers these transitions through an in-memory repository fake.
