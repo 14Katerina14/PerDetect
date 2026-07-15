@@ -83,3 +83,28 @@ jobs:
       - name: Run core tests
         run: |
           ctest --test-dir build -C Debug --output-on-failure
+
+  backend-mongodb:
+    name: MongoDB infrastructure build and mapper tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure CMake MongoDB infrastructure build
+        run: |
+          cmake -S . -B build-mongodb \
+            -DSECUREZONE_BUILD_MONGODB_INFRA=ON \
+            -DSECUREZONE_BUILD_MONGODB_TESTS=ON \
+            -DSECUREZONE_BUILD_MONGODB_INTEGRATION_TESTS=OFF \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build MongoDB infrastructure targets
+        run: |
+          cmake --build build-mongodb --config Debug --parallel 2
+
+      - name: Run MongoDB mapper tests
+        run: |
+          ctest --test-dir build-mongodb -C Debug -L mongodb --output-on-failure

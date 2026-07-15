@@ -1,4 +1,5 @@
 #include <cassert>
+#include <stdexcept>
 #include <string>
 
 #include <bsoncxx/builder/basic/document.hpp>
@@ -33,11 +34,10 @@ void mapsScannerUser() {
 
     const auto user = mongodb::mapAppUserDocument(document.view());
 
-    assert(user.has_value());
-    assert(user->userId == "APP-SCANNER-001");
-    assert(user->username == "scanner");
-    assert(user->role == domain::AppUserRole::Scanner);
-    assert(user->status == domain::AppUserStatus::Active);
+    assert(user.userId == "APP-SCANNER-001");
+    assert(user.username == "scanner");
+    assert(user.role == domain::AppUserRole::Scanner);
+    assert(user.status == domain::AppUserStatus::Active);
 }
 
 void mapsEverySupportedRole() {
@@ -55,8 +55,8 @@ void mapsEverySupportedRole() {
     const auto manager = mongodb::mapAppUserDocument(managerDocument.view());
     const auto admin = mongodb::mapAppUserDocument(adminDocument.view());
 
-    assert(manager && manager->role == domain::AppUserRole::Manager);
-    assert(admin && admin->role == domain::AppUserRole::Admin);
+    assert(manager.role == domain::AppUserRole::Manager);
+    assert(admin.role == domain::AppUserRole::Admin);
 }
 
 void mapsInactiveStatus() {
@@ -69,7 +69,18 @@ void mapsInactiveStatus() {
 
     const auto user = mongodb::mapAppUserDocument(document.view());
 
-    assert(user && user->status == domain::AppUserStatus::Inactive);
+    assert(user.status == domain::AppUserStatus::Inactive);
+}
+
+template <typename Action>
+void assertThrows(Action action) {
+    try {
+        action();
+    } catch (const std::runtime_error&) {
+        return;
+    }
+
+    assert(false && "Expected MongoDB app user mapping to throw.");
 }
 
 void rejectsInvalidRole() {
@@ -79,7 +90,9 @@ void rejectsInvalidRole() {
         "operator"
     );
 
-    assert(!mongodb::mapAppUserDocument(document.view()).has_value());
+    assertThrows([&document] {
+        mongodb::mapAppUserDocument(document.view());
+    });
 }
 
 void rejectsInvalidStatus() {
@@ -90,7 +103,9 @@ void rejectsInvalidStatus() {
         "blocked"
     );
 
-    assert(!mongodb::mapAppUserDocument(document.view()).has_value());
+    assertThrows([&document] {
+        mongodb::mapAppUserDocument(document.view());
+    });
 }
 
 void rejectsMissingRequiredField() {
@@ -102,13 +117,17 @@ void rejectsMissingRequiredField() {
     );
     const auto value = document.extract();
 
-    assert(!mongodb::mapAppUserDocument(value.view()).has_value());
+    assertThrows([&value] {
+        mongodb::mapAppUserDocument(value.view());
+    });
 }
 
 void rejectsEmptyRequiredField() {
     const auto document = appUserDocument("", "scanner");
 
-    assert(!mongodb::mapAppUserDocument(document.view()).has_value());
+    assertThrows([&document] {
+        mongodb::mapAppUserDocument(document.view());
+    });
 }
 
 }

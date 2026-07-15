@@ -34,6 +34,10 @@ target_link_libraries(SecureZone.Infrastructure
 
 target_compile_features(SecureZone.Infrastructure PUBLIC cxx_std_20)
 
+option(SECUREZONE_BUILD_MONGODB_TESTS "Build MongoDB infrastructure unit tests" ON)
+option(SECUREZONE_BUILD_MONGODB_INTEGRATION_TESTS "Build MongoDB integration tests that require a running MongoDB instance" OFF)
+
+if(SECUREZONE_BUILD_MONGODB_TESTS)
 add_executable(
     MongoAppUserMapperTests
     tests/mongodb/MongoAppUserMapperTests.cpp
@@ -44,7 +48,14 @@ target_link_libraries(
         SecureZone.Infrastructure
 )
 add_test(NAME MongoAppUserMapperTests COMMAND MongoAppUserMapperTests)
+set_tests_properties(
+    MongoAppUserMapperTests
+    PROPERTIES
+        LABELS "mongodb;unit"
+)
+endif()
 
+if(SECUREZONE_BUILD_MONGODB_INTEGRATION_TESTS)
 add_executable(
     MongoAppUserRepositoryTests
     tests/mongodb/MongoAppUserRepositoryTests.cpp
@@ -58,5 +69,7 @@ add_test(NAME MongoAppUserRepositoryTests COMMAND MongoAppUserRepositoryTests)
 set_tests_properties(
     MongoAppUserRepositoryTests
     PROPERTIES
+        LABELS "mongodb;integration"
         SKIP_RETURN_CODE 77
 )
+endif()

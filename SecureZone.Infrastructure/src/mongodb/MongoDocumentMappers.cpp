@@ -5,7 +5,6 @@
 #include <bsoncxx/types.hpp>
 
 #include <chrono>
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -139,9 +138,7 @@ domain::EmployeeStatus employeeStatusFromString(const std::string& value) {
     return domain::EmployeeStatus::Inactive;
 }
 
-std::optional<domain::AppUserRole> appUserRoleFromString(
-    const std::string& value
-) {
+domain::AppUserRole appUserRoleFromString(const std::string& value) {
     if (value == "scanner") {
         return domain::AppUserRole::Scanner;
     }
@@ -154,12 +151,10 @@ std::optional<domain::AppUserRole> appUserRoleFromString(
         return domain::AppUserRole::Admin;
     }
 
-    return std::nullopt;
+    throw std::runtime_error("Unknown MongoDB app user role: " + value);
 }
 
-std::optional<domain::AppUserStatus> appUserStatusFromString(
-    const std::string& value
-) {
+domain::AppUserStatus appUserStatusFromString(const std::string& value) {
     if (value == "active") {
         return domain::AppUserStatus::Active;
     }
@@ -168,7 +163,7 @@ std::optional<domain::AppUserStatus> appUserStatusFromString(
         return domain::AppUserStatus::Inactive;
     }
 
-    return std::nullopt;
+    throw std::runtime_error("Unknown MongoDB app user status: " + value);
 }
 
 domain::ZoneType zoneTypeFromString(const std::string& value) {
@@ -265,30 +260,22 @@ domain::Employee mapEmployeeDocument(bsoncxx::document::view document) {
     return employee;
 }
 
-std::optional<domain::AppUser> mapAppUserDocument(
-    bsoncxx::document::view document
-) {
-    try {
-        domain::AppUser user{};
-        user.userId = requiredString(document, "userId");
-        user.username = requiredString(document, "username");
+domain::AppUser mapAppUserDocument(bsoncxx::document::view document) {
+    domain::AppUser user{};
+    user.userId = requiredString(document, "userId");
+    user.username = requiredString(document, "username");
 
-        if (user.userId.empty() || user.username.empty()) {
-            return std::nullopt;
-        }
-
-        const auto role = appUserRoleFromString(requiredString(document, "role"));
-        const auto status = appUserStatusFromString(requiredString(document, "status"));
-        if (!role || !status) {
-            return std::nullopt;
-        }
-
-        user.role = *role;
-        user.status = *status;
-        return user;
-    } catch (const std::exception&) {
-        return std::nullopt;
+    if (user.userId.empty()) {
+        throw std::runtime_error("MongoDB app user document has empty userId.");
     }
+
+    if (user.username.empty()) {
+        throw std::runtime_error("MongoDB app user document has empty username.");
+    }
+
+    user.role = appUserRoleFromString(requiredString(document, "role"));
+    user.status = appUserStatusFromString(requiredString(document, "status"));
+    return user;
 }
 
 domain::Zone mapZoneDocument(bsoncxx::document::view document) {

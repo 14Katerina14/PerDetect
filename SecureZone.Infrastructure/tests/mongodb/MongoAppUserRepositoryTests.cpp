@@ -1,6 +1,7 @@
 #include <cassert>
 #include <cstdlib>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 #include <bsoncxx/builder/basic/document.hpp>
@@ -91,8 +92,17 @@ int main() {
     collection.insert_one(invalidRoleDocument.view());
     collection.insert_one(invalidStatusDocument.view());
 
-    assert(!repository.findByUserId("APP-INVALID-ROLE").has_value());
-    assert(!repository.findByUsername("invalid-status").has_value());
+    try {
+        repository.findByUserId("APP-INVALID-ROLE");
+        assert(false && "Expected invalid role document to throw.");
+    } catch (const std::runtime_error&) {
+    }
+
+    try {
+        repository.findByUsername("invalid-status");
+        assert(false && "Expected invalid status document to throw.");
+    } catch (const std::runtime_error&) {
+    }
 
     database.drop();
 }
