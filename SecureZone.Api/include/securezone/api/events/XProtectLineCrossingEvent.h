@@ -20,6 +20,9 @@ struct XProtectLineCrossingResult {
     bool accepted{};
     std::string status;
     std::string decision;
+    std::string zoneId;
+    std::string sessionId;
+    std::string employeeId;
     std::string message;
 };
 

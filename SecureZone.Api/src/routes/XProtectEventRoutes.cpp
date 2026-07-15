@@ -76,6 +76,12 @@ HttpResponse XProtectEventRoutes::handleLineCrossing(const HttpRequest& request)
          << jsonEscape(handlerResult.status)
          << R"(","decision":")"
          << jsonEscape(handlerResult.decision)
+         << R"(","zoneId":")"
+         << jsonEscape(handlerResult.zoneId)
+         << R"(","sessionId":")"
+         << jsonEscape(handlerResult.sessionId)
+         << R"(","employeeId":")"
+         << jsonEscape(handlerResult.employeeId)
          << R"(","message":")"
          << jsonEscape(handlerResult.message)
          << R"(","eventType":"xprotect_line_crossing","eventName":")"

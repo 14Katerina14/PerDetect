@@ -1,7 +1,13 @@
 #include "securezone/api/ApiApplication.h"
+#include "securezone/api/handlers/XProtectLineCrossingHandler.h"
 #include "securezone/api/http/Router.h"
+#include "securezone/domain/PresenceSession.h"
+#include "securezone/domain/Zone.h"
+#include "securezone/xprotect/XProtectLineCrossingService.h"
 
 #include <cassert>
+#include <chrono>
+#include <optional>
 #include <utility>
 #include <vector>
 #include <string>
@@ -9,6 +15,40 @@
 namespace {
 
 using namespace securezone::api;
+namespace domain = securezone::domain;
+namespace xprotect = securezone::xprotect;
+using Clock = std::chrono::system_clock;
+
+const auto XProtectEventTime = Clock::time_point{} + std::chrono::minutes{10};
+const std::string WiseAiLineCrossingEvent = "Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2";
+const std::string CameraSource = "Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1";
+
+domain::Zone mappedXProtectZone() {
+    domain::Zone zone{};
+    zone.zoneId = "ZONE-001";
+    zone.name = "Machine A dangerous zone";
+    zone.cameraId = "CAM-001";
+    zone.type = domain::ZoneType::Dangerous;
+    zone.status = domain::ZoneStatus::Active;
+    zone.xprotectEventName = WiseAiLineCrossingEvent;
+    return zone;
+}
+
+domain::PresenceSession activePresenceSession() {
+    domain::PresenceSession session{};
+    session.sessionId = "SESSION-001";
+    session.employeeId = "EMP-001";
+    session.zoneId = "ZONE-001";
+    session.sourceCheckinId = "CHECKIN-001";
+    session.startedAt = XProtectEventTime - std::chrono::minutes{5};
+    session.expiresAt = XProtectEventTime + std::chrono::minutes{5};
+    session.status = domain::PresenceSessionStatus::Active;
+    return session;
+}
+
+std::optional<Clock::time_point> fixedXProtectEventTime(const std::string&) {
+    return XProtectEventTime;
+}
 
 void healthRouteReturnsOk() {
     const ApiServer server{};
@@ -95,6 +135,9 @@ void xprotectRouteCallsConfiguredHandler() {
                     true,
                     "processed",
                     "violation",
+                    "ZONE-001",
+                    {},
+                    {},
                     "No active presence session for zone."
                 };
             }
@@ -261,6 +304,9 @@ void applicationRoutesXProtectLineCrossingRequestsToConfiguredHandler() {
                     true,
                     "queued",
                     "pending",
+                    {},
+                    {},
+                    {},
                     "Decision flow queued."
                 };
             }
@@ -297,6 +343,9 @@ void xprotectRouteMapsHandlerResultsToHttpResponses() {
                         false,
                         testCase.first,
                         "none",
+                        {},
+                        {},
+                        {},
                         "mapped xprotect message"
                     };
                 }
@@ -314,6 +363,121 @@ void xprotectRouteMapsHandlerResultsToHttpResponses() {
         assert(response.body.find(testCase.first) != std::string::npos);
         assert(response.body.find("mapped xprotect message") != std::string::npos);
     }
+}
+
+void xprotectLineCrossingCreatesViolationWhenPresenceIsMissing() {
+    xprotect::XProtectLineCrossingService service{
+        [](const xprotect::XProtectLineCrossingCommand&) {
+            return std::optional<domain::Zone>{mappedXProtectZone()};
+        },
+        [](const domain::Zone&, Clock::time_point) {
+            return std::optional<domain::PresenceSession>{};
+        }
+    };
+
+    ApiServer server{
+        {},
+        ApiRouteHandlers{
+            {},
+            XProtectLineCrossingHandler{service, fixedXProtectEventTime}
+        }
+    };
+
+    const auto response = server.handle({
+        "POST",
+        "/api/xprotect/line-crossing",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
+        {}
+    });
+
+    assert(response.statusCode == 200);
+    assert(response.body.find(R"("accepted":true)") != std::string::npos);
+    assert(response.body.find(R"("decision":"violation")") != std::string::npos);
+    assert(response.body.find(R"("zoneId":"ZONE-001")") != std::string::npos);
+    assert(response.body.find("No active QR presence session") != std::string::npos);
+}
+
+void xprotectLineCrossingAllowsActivePresence() {
+    xprotect::XProtectLineCrossingService service{
+        [](const xprotect::XProtectLineCrossingCommand&) {
+            return std::optional<domain::Zone>{mappedXProtectZone()};
+        },
+        [](const domain::Zone&, Clock::time_point) {
+            return std::optional<domain::PresenceSession>{activePresenceSession()};
+        }
+    };
+
+    ApiServer server{
+        {},
+        ApiRouteHandlers{
+            {},
+            XProtectLineCrossingHandler{service, fixedXProtectEventTime}
+        }
+    };
+
+    const auto response = server.handle({
+        "POST",
+        "/api/xprotect/line-crossing",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
+        {}
+    });
+
+    assert(response.statusCode == 200);
+    assert(response.body.find(R"("decision":"allowed")") != std::string::npos);
+    assert(response.body.find(R"("zoneId":"ZONE-001")") != std::string::npos);
+    assert(response.body.find(R"("sessionId":"SESSION-001")") != std::string::npos);
+    assert(response.body.find(R"("employeeId":"EMP-001")") != std::string::npos);
+}
+
+void xprotectLineCrossingReturnsNotFoundForUnmappedZone() {
+    xprotect::XProtectLineCrossingService service{
+        [](const xprotect::XProtectLineCrossingCommand&) {
+            return std::optional<domain::Zone>{};
+        },
+        [](const domain::Zone&, Clock::time_point) {
+            return std::optional<domain::PresenceSession>{};
+        }
+    };
+
+    ApiServer server{
+        {},
+        ApiRouteHandlers{
+            {},
+            XProtectLineCrossingHandler{service, fixedXProtectEventTime}
+        }
+    };
+
+    const auto response = server.handle({
+        "POST",
+        "/api/xprotect/line-crossing",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
+        {}
+    });
+
+    assert(response.statusCode == 404);
+    assert(response.body.find(R"("status":"zone_not_found")") != std::string::npos);
+}
+
+void xprotectLineCrossingReturnsServerErrorForHandlerError() {
+    xprotect::XProtectLineCrossingService service{{}, {}};
+
+    ApiServer server{
+        {},
+        ApiRouteHandlers{
+            {},
+            XProtectLineCrossingHandler{service, fixedXProtectEventTime}
+        }
+    };
+
+    const auto response = server.handle({
+        "POST",
+        "/api/xprotect/line-crossing",
+        R"({"eventName":"Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2","sourceName":"Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1","receivedAt":"2026-07-15T10:30:00Z"})",
+        {}
+    });
+
+    assert(response.statusCode == 500);
+    assert(response.body.find(R"("status":"handler_error")") != std::string::npos);
 }
 
 void applicationKeepsSettingsAndStartupSummary() {
@@ -381,4 +545,8 @@ int main() {
     applicationKeepsSettingsAndStartupSummary();
     xprotectLineCrossingRejectsMissingSource();
     xprotectLineCrossingRejectsUnsupportedEvents();
+    xprotectLineCrossingCreatesViolationWhenPresenceIsMissing();
+    xprotectLineCrossingAllowsActivePresence();
+    xprotectLineCrossingReturnsNotFoundForUnmappedZone();
+    xprotectLineCrossingReturnsServerErrorForHandlerError();
 }

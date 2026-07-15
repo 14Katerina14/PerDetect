@@ -7,6 +7,7 @@ add_library(SecureZoneApi
     src/ApiServer.cpp
     src/ApiSettings.cpp
     src/events/XProtectLineCrossingEvent.cpp
+    src/handlers/XProtectLineCrossingHandler.cpp
     src/http/Router.cpp
     src/routes/HealthRoutes.cpp
     src/routes/QrRoutes.cpp
