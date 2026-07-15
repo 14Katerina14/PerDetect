@@ -43,6 +43,11 @@ public:
         const std::string&,
         Clock::time_point
     )>;
+    using PolicyAlarmEvaluator = std::function<XProtectLineCrossingDecision(
+        const XProtectLineCrossingCommand&,
+        const domain::Zone&,
+        const std::optional<domain::TrackIdentityBinding>&
+    )>;
 
     XProtectLineCrossingService(
         ZoneResolver zoneResolver,
@@ -52,6 +57,11 @@ public:
         ZoneResolver zoneResolver,
         IdentityBindingResolver identityBindingResolver
     );
+    XProtectLineCrossingService(
+        ZoneResolver zoneResolver,
+        IdentityBindingResolver identityBindingResolver,
+        PolicyAlarmEvaluator policyAlarmEvaluator
+    );
 
     XProtectLineCrossingDecision evaluate(const XProtectLineCrossingCommand& command) const;
 
@@ -59,6 +69,7 @@ private:
     ZoneResolver zoneResolver_;
     ActivePresenceResolver activePresenceResolver_;
     IdentityBindingResolver identityBindingResolver_;
+    PolicyAlarmEvaluator policyAlarmEvaluator_;
 };
 
 }

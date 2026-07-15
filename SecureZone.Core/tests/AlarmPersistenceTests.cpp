@@ -25,6 +25,13 @@ public:
         return std::nullopt;
     }
 
+    std::size_t countActiveByZone(const std::string& zoneId) const override {
+        return activeAlarm.has_value()
+            && (activeAlarm->status == domain::AlarmStatus::Active
+                || activeAlarm->status == domain::AlarmStatus::Acknowledged)
+            && activeAlarm->zoneId == zoneId ? 1U : 0U;
+    }
+
     void create(const domain::Alarm& alarm) override {
         activeAlarm = alarm;
         ++createCount;

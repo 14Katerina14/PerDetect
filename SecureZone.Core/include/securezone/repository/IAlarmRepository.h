@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <cstddef>
 #include <optional>
 #include <string>
 
@@ -16,6 +17,8 @@ public:
         const std::string& trackId,
         const std::string& zoneId
     ) const = 0;
+
+    virtual std::size_t countActiveByZone(const std::string& zoneId) const = 0;
 
     virtual void create(const domain::Alarm& alarm) = 0;
 

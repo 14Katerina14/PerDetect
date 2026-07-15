@@ -17,7 +17,8 @@ add_library(SecureZoneCore
     src/qr/QrCheckInService.cpp
     src/webhook/WebhookNotificationService.cpp
     src/webhook/WebhookDeliveryService.cpp
-    src/xprotect/XProtectLineCrossingService.cpp)
+    src/xprotect/XProtectLineCrossingService.cpp
+    src/xprotect/XProtectPolicyAlarmService.cpp)
 target_compile_features(SecureZoneCore PUBLIC cxx_std_17)
 target_include_directories(SecureZoneCore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -33,6 +34,7 @@ set(SECUREZONE_CORE_TESTS
     WebhookNotificationServiceTests
     WebhookDeliveryServiceTests
     XProtectLineCrossingServiceTests
+    XProtectPolicyAlarmServiceTests
     CameraIdentityServiceTests
 )
 
@@ -45,6 +47,8 @@ foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
         set(test_source tests/configuration/ConfigurationServicesTests.cpp)
     elseif(test_name STREQUAL "XProtectLineCrossingServiceTests")
         set(test_source tests/xprotect/XProtectLineCrossingServiceTests.cpp)
+    elseif(test_name STREQUAL "XProtectPolicyAlarmServiceTests")
+        set(test_source tests/xprotect/XProtectPolicyAlarmServiceTests.cpp)
     elseif(test_name STREQUAL "CameraIdentityServiceTests")
         set(test_source tests/identity/CameraIdentityServiceTests.cpp)
     else()
