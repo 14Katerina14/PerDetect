@@ -49,6 +49,10 @@ int httpStatusForQrResult(const qr::QrCheckInResult& result) {
         return 400;
     }
 
+    if (result.status == "no_recent_human") {
+        return 409;
+    }
+
     if (result.status == "employee_not_found"
         || result.status == "zone_not_found"
         || result.status == "scanner_not_found") {
@@ -70,6 +74,8 @@ HttpResponse qrResultResponse(const qr::QrCheckInResult& result) {
          << R"(,"status":")" << jsonEscape(result.status)
          << R"(","sessionId":")" << jsonEscape(result.sessionId)
          << R"(","message":")" << jsonEscape(result.message)
+         << R"(","objectId":")" << jsonEscape(result.objectId)
+         << R"(","bindingId":")" << jsonEscape(result.bindingId)
          << R"("})";
 
     return jsonResponse(httpStatusForQrResult(result), body.str());
@@ -93,6 +99,7 @@ HttpResponse QrRoutes::handleCheckIn(const HttpRequest& request) const {
     command.employeeId = readJsonStringField(request.body, "employeeId").value_or("");
     command.zoneId = readJsonStringField(request.body, "zoneId").value_or("");
     command.scannedByUserId = readJsonStringField(request.body, "scannedByUserId").value_or("");
+    command.cameraId = readJsonStringField(request.body, "cameraId").value_or("");
 
     return qrResultResponse(checkInHandler_(command));
 }

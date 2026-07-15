@@ -7,10 +7,16 @@ SecureZone C++ backend.
 ## Runtime flow
 
 ```text
-WiseAI LineCrossing
+Human appears in the camera field of view
+  -> XProtect metadata stream exposes cameraId + ObjectId + Human
+  -> plugin POST /api/xprotect/object-observations
+  -> scanner phone POST /api/qr/check-in with the same cameraId
+  -> backend binds the employee to the newest unbound Human ObjectId
+WiseAI LineCrossing for that object
   -> XProtect Event Server
-  -> SecureZone plugin POST /api/xprotect/line-crossing
-  -> backend checks the MongoDB zone and active QR presence session
+  -> plugin correlates the XProtect event with raw metadata ObjectId
+  -> plugin POST /api/xprotect/line-crossing with cameraId + ObjectId
+  -> backend checks the MongoDB zone and active object identity binding
   -> allowed: plugin logs the decision and raises no event
   -> violation: plugin raises SecureZoneViolationConfirmed
   -> XProtect rule activates the external speaker/output device
@@ -33,9 +39,29 @@ The plugin sends:
   "eventId": "xprotect-event-guid",
   "eventName": "Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2",
   "sourceName": "Camera 1",
-  "receivedAt": "2026-07-15T10:30:00.0000000Z"
+  "receivedAt": "2026-07-15T10:30:00.0000000Z",
+  "cameraId": "camera-guid",
+  "objectId": "42",
+  "action": "Crossed"
 }
 ```
+
+For every Human object received from the live metadata stream, the plugin also
+sends:
+
+```json
+{
+  "cameraId": "camera-guid",
+  "objectId": "42",
+  "objectType": "Human",
+  "observedAt": "2026-07-15T10:29:55.0000000Z"
+}
+```
+
+to `POST /api/xprotect/object-observations`. The MIP SDK related camera item is
+used as `cameraId`. The scanner app must send that camera GUID in its QR
+check-in request. The default QR matching window is 15 seconds, so the employee
+should scan immediately after entering the camera field of view.
 
 It optionally sends `X-SecureZone-Api-Key` when
 `SECUREZONE_XPROTECT_API_KEY` is configured.
@@ -48,7 +74,7 @@ The event is confirmed only for a response shaped like:
   "status": "processed",
   "decision": "violation",
   "zoneId": "ZONE-001",
-  "message": "No active QR presence session found for zone."
+  "message": "Camera object has no active QR identity binding."
 }
 ```
 

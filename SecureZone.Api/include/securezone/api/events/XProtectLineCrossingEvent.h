@@ -9,6 +9,9 @@ struct XProtectLineCrossingEvent {
     std::string eventId;
     std::string eventName;
     std::string sourceName;
+    std::string cameraId;
+    std::string objectId;
+    std::string action;
     std::string receivedAt;
 };
 

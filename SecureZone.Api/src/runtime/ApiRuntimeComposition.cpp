@@ -375,7 +375,8 @@ ApiApplication ApiRuntimeComposition::createApplication() const {
 ApiRouteHandlers ApiRuntimeComposition::createRouteHandlers() const {
     return ApiRouteHandlers{
         createQrCheckInHandler(),
-        createXProtectLineCrossingHandler()
+        createXProtectLineCrossingHandler(),
+        {}
     };
 }
 

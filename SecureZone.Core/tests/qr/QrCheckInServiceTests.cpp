@@ -203,6 +203,52 @@ public:
     }
 };
 
+class FakeCameraObjectTrackRepository final : public repository::ICameraObjectTrackRepository {
+public:
+    std::vector<domain::CameraObjectTrack> tracks;
+
+    void upsertObservation(const domain::CameraObjectTrack& track) override {
+        tracks.push_back(track);
+    }
+
+    std::vector<domain::CameraObjectTrack> findRecentHumans(
+        const std::string& cameraId,
+        Clock::time_point seenAfter,
+        Clock::time_point seenAtOrBefore
+    ) const override {
+        std::vector<domain::CameraObjectTrack> result;
+        for (const auto& track : tracks) {
+            if (track.cameraId == cameraId && track.isHuman()
+                && track.firstSeenAt >= seenAfter && track.firstSeenAt <= seenAtOrBefore) {
+                result.push_back(track);
+            }
+        }
+        return result;
+    }
+};
+
+class FakeTrackIdentityBindingRepository final : public repository::ITrackIdentityBindingRepository {
+public:
+    std::vector<domain::TrackIdentityBinding> bindings;
+
+    std::optional<domain::TrackIdentityBinding> findActiveByTrack(
+        const std::string& cameraId,
+        const std::string& objectId,
+        Clock::time_point at
+    ) const override {
+        for (const auto& binding : bindings) {
+            if (binding.cameraId == cameraId && binding.objectId == objectId && binding.isActiveAt(at)) {
+                return binding;
+            }
+        }
+        return std::nullopt;
+    }
+
+    void create(const domain::TrackIdentityBinding& binding) override {
+        bindings.push_back(binding);
+    }
+};
+
 struct TestContext {
     FakeEmployeeRepository employees;
     FakeAppUserRepository appUsers;
@@ -335,6 +381,36 @@ void statusMappingCoversPresenceSessionResults() {
     assert(qr::toQrCheckInMessage(Status::AlreadyActive).empty());
 }
 
+void cameraAwareCheckInBindsTheNewestHumanObject() {
+    TestContext context;
+    FakeCameraObjectTrackRepository tracks;
+    FakeTrackIdentityBindingRepository bindings;
+    domain::CameraObjectTrack human{};
+    human.cameraId = "CAM-001";
+    human.objectId = "OBJECT-42";
+    human.objectType = "Human";
+    human.firstSeenAt = FixedNow - std::chrono::seconds{1};
+    human.lastSeenAt = human.firstSeenAt;
+    tracks.tracks.push_back(human);
+    identity::CameraIdentityService identityService{tracks, bindings};
+    qr::QrCheckInService service{
+        context.presenceService,
+        identityService,
+        [] { return FixedNow; }
+    };
+    auto command = validCommand();
+    command.cameraId = "CAM-001";
+
+    const auto result = service.checkIn(command);
+
+    assert(result.accepted);
+    assert(result.objectId == "OBJECT-42");
+    assert(!result.bindingId.empty());
+    assert(bindings.bindings.size() == 1);
+    assert(bindings.bindings.front().employeeId == "EMP-001");
+    assert(bindings.bindings.front().presenceSessionId == result.sessionId);
+}
+
 }
 
 int main() {
@@ -344,4 +420,5 @@ int main() {
     inactiveEmployeeAndZoneAreMappedToMessages();
     activeSessionIsExtended();
     statusMappingCoversPresenceSessionResults();
+    cameraAwareCheckInBindsTheNewestHumanObject();
 }

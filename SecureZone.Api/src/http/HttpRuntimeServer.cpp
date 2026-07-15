@@ -36,6 +36,7 @@ bool runHttpRuntimeServer(const ApiApplication& application) {
     server.Get("/health", handle);
     server.Post("/api/qr/check-in", handle);
     server.Post("/api/xprotect/line-crossing", handle);
+    server.Post("/api/xprotect/object-observations", handle);
 
     const auto& settings = application.settings();
     if (!server.bind_to_port(settings.host, settings.port)) {

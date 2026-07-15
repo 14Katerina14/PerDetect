@@ -35,6 +35,19 @@ domain::PresenceSession activePresenceSession() {
     return session;
 }
 
+domain::TrackIdentityBinding activeIdentityBinding() {
+    domain::TrackIdentityBinding binding{};
+    binding.bindingId = "BINDING-001";
+    binding.cameraId = "CAM-001";
+    binding.objectId = "OBJECT-42";
+    binding.employeeId = "EMP-001";
+    binding.presenceSessionId = "SESSION-001";
+    binding.boundAt = EventTime - std::chrono::minutes{1};
+    binding.expiresAt = EventTime + std::chrono::minutes{1};
+    binding.status = domain::TrackIdentityBindingStatus::Active;
+    return binding;
+}
+
 xprotect::XProtectLineCrossingCommand validCommand() {
     return {
         "Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2",
@@ -137,13 +150,64 @@ void allowsWhenActivePresenceSessionExists() {
 }
 
 void reportsHandlerErrorWhenDependenciesAreMissing() {
-    xprotect::XProtectLineCrossingService service{{}, {}};
+    xprotect::XProtectLineCrossingService service{
+        xprotect::XProtectLineCrossingService::ZoneResolver{},
+        xprotect::XProtectLineCrossingService::ActivePresenceResolver{}
+    };
 
     const auto result = service.evaluate(validCommand());
 
     assert(!result.accepted);
     assert(result.status == "handler_error");
     assert(result.decision == "none");
+}
+
+void identityModeRequiresCameraObjectEvidence() {
+    xprotect::XProtectLineCrossingService service{
+        [](const xprotect::XProtectLineCrossingCommand&) {
+            return std::optional<domain::Zone>{activeZone()};
+        },
+        xprotect::XProtectLineCrossingService::IdentityBindingResolver{
+            [](const std::string&, const std::string&, Clock::time_point) {
+                return std::optional<domain::TrackIdentityBinding>{activeIdentityBinding()};
+            }
+        }
+    };
+
+    const auto result = service.evaluate(validCommand());
+
+    assert(result.accepted);
+    assert(result.decision == "violation");
+    assert(result.message.find("ObjectId") != std::string::npos);
+}
+
+void identityModeAllowsOnlyTheBoundCameraObject() {
+    xprotect::XProtectLineCrossingService service{
+        [](const xprotect::XProtectLineCrossingCommand&) {
+            return std::optional<domain::Zone>{activeZone()};
+        },
+        xprotect::XProtectLineCrossingService::IdentityBindingResolver{
+            [](const std::string& cameraId, const std::string& objectId, Clock::time_point) {
+                if (cameraId == "CAM-001" && objectId == "OBJECT-42") {
+                    return std::optional<domain::TrackIdentityBinding>{activeIdentityBinding()};
+                }
+                return std::optional<domain::TrackIdentityBinding>{};
+            }
+        }
+    };
+    auto command = validCommand();
+    command.cameraId = "CAM-001";
+    command.objectId = "OBJECT-42";
+
+    const auto allowed = service.evaluate(command);
+    command.objectId = "OBJECT-99";
+    const auto violation = service.evaluate(command);
+
+    assert(allowed.accepted && allowed.decision == "allowed");
+    assert(allowed.employeeId == "EMP-001");
+    assert(allowed.sessionId == "SESSION-001");
+    assert(violation.accepted && violation.decision == "violation");
+    assert(violation.employeeId.empty());
 }
 
 }
@@ -156,4 +220,6 @@ int main() {
     createsViolationWhenPresenceSessionIsExpired();
     allowsWhenActivePresenceSessionExists();
     reportsHandlerErrorWhenDependenciesAreMissing();
+    identityModeRequiresCameraObjectEvidence();
+    identityModeAllowsOnlyTheBoundCameraObject();
 }

@@ -11,7 +11,9 @@ const collections = [
   "machines",
   "alarms",
   "webhook_targets",
-  "webhook_deliveries"
+  "webhook_deliveries",
+  "camera_object_tracks",
+  "track_identity_bindings"
 ];
 
 collections.forEach((collectionName) => {
@@ -43,6 +45,16 @@ securezone.presence_sessions.createIndex({ zoneId: 1 });
 securezone.presence_sessions.createIndex({ sourceCheckinId: 1 });
 securezone.presence_sessions.createIndex({ status: 1 });
 securezone.presence_sessions.createIndex({ expiresAt: 1 });
+
+securezone.camera_object_tracks.createIndex({ cameraId: 1, objectId: 1 }, { unique: true });
+securezone.camera_object_tracks.createIndex({ cameraId: 1, objectType: 1, firstSeenAt: -1 });
+securezone.camera_object_tracks.createIndex({ status: 1, lastSeenAt: -1 });
+securezone.camera_object_tracks.createIndex({ lastSeenAt: 1 }, { expireAfterSeconds: 600 });
+
+securezone.track_identity_bindings.createIndex({ bindingId: 1 }, { unique: true });
+securezone.track_identity_bindings.createIndex({ cameraId: 1, objectId: 1, boundAt: -1 });
+securezone.track_identity_bindings.createIndex({ employeeId: 1, status: 1 });
+securezone.track_identity_bindings.createIndex({ expiresAt: 1 });
 
 securezone.access_policies.createIndex({ policyId: 1 }, { unique: true });
 securezone.access_policies.createIndex({ zoneId: 1 });

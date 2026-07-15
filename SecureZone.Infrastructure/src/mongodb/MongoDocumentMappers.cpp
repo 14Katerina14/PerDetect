@@ -290,6 +290,36 @@ domain::Zone mapZoneDocument(bsoncxx::document::view document) {
     return zone;
 }
 
+domain::CameraObjectTrack mapCameraObjectTrackDocument(bsoncxx::document::view document) {
+    domain::CameraObjectTrack track{};
+    track.cameraId = requiredString(document, "cameraId");
+    track.objectId = requiredString(document, "objectId");
+    track.objectType = requiredString(document, "objectType");
+    track.firstSeenAt = requiredDate(document, "firstSeenAt");
+    track.lastSeenAt = requiredDate(document, "lastSeenAt");
+    track.status = requiredString(document, "status") == "active"
+        ? domain::CameraObjectTrackStatus::Active
+        : domain::CameraObjectTrackStatus::Lost;
+    return track;
+}
+
+domain::TrackIdentityBinding mapTrackIdentityBindingDocument(bsoncxx::document::view document) {
+    domain::TrackIdentityBinding binding{};
+    binding.bindingId = requiredString(document, "bindingId");
+    binding.cameraId = requiredString(document, "cameraId");
+    binding.objectId = requiredString(document, "objectId");
+    binding.employeeId = requiredString(document, "employeeId");
+    binding.sourceCheckinId = requiredString(document, "sourceCheckinId");
+    binding.presenceSessionId = requiredString(document, "presenceSessionId");
+    binding.boundAt = requiredDate(document, "boundAt");
+    binding.expiresAt = requiredDate(document, "expiresAt");
+    const auto status = requiredString(document, "status");
+    binding.status = status == "active" ? domain::TrackIdentityBindingStatus::Active
+        : status == "released" ? domain::TrackIdentityBindingStatus::Released
+        : domain::TrackIdentityBindingStatus::Expired;
+    return binding;
+}
+
 domain::MachineState mapMachineDocument(bsoncxx::document::view document) {
     domain::MachineState machineState{};
     machineState.machineId = requiredString(document, "machineId");

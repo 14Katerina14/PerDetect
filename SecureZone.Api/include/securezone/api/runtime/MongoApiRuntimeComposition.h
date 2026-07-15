@@ -21,6 +21,7 @@ public:
     ApiRouteHandlers createRouteHandlers() const;
     QrRoutes::CheckInHandler createQrCheckInHandler() const;
     XProtectEventRoutes::LineCrossingHandler createXProtectLineCrossingHandler() const;
+    CameraObjectRoutes::ObservationHandler createCameraObjectObservationHandler() const;
 
 private:
     struct State;

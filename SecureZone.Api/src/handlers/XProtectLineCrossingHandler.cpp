@@ -95,7 +95,10 @@ XProtectLineCrossingResult XProtectLineCrossingHandler::operator()(
     auto result = toApiResult(service_.evaluate({
         event.eventName,
         event.sourceName,
-        receivedAt
+        receivedAt,
+        event.cameraId,
+        event.objectId,
+        event.action
     }));
 
     if (!event.eventId.empty() && result.accepted && result.status == "processed") {

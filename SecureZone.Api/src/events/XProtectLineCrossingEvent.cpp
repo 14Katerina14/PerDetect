@@ -40,6 +40,9 @@ XProtectLineCrossingParseResult parseXProtectLineCrossingEvent(const std::string
     event.eventId = readJsonStringField(body, "eventId").value_or("");
     event.eventName = *eventName;
     event.sourceName = *sourceName;
+    event.cameraId = readJsonStringField(body, "cameraId").value_or("");
+    event.objectId = readJsonStringField(body, "objectId").value_or("");
+    event.action = readJsonStringField(body, "action").value_or("");
     event.receivedAt = readJsonStringField(body, "receivedAt").value_or("");
     return {event, {}};
 }
