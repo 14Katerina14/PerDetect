@@ -14,14 +14,14 @@ namespace {
 
 using namespace securezone;
 
-domain::Detection makeDetection(domain::ObjectClass objectClass = domain::ObjectClass::Person) {
-    domain::Detection detection{};
-    detection.trackId = "track-1";
-    detection.cameraId = "camera-1";
-    detection.objectClass = objectClass;
-    detection.confidence = 0.95;
-    detection.timestamp = std::chrono::system_clock::now();
-    return detection;
+domain::ZoneEntryEvent makeZoneEntryEvent() {
+    domain::ZoneEntryEvent event{};
+    event.eventId = "event-1";
+    event.trackId = "track-1";
+    event.cameraId = "camera-1";
+    event.sourceName = "Hanwha Vision TNO-C4052T";
+    event.timestamp = std::chrono::system_clock::now();
+    return event;
 }
 
 domain::Zone makeZone(
@@ -72,47 +72,31 @@ domain::AccessPolicy makeAccessPolicy(
 }
 
 decision::DecisionContext makeContext(
-    const domain::Detection& detection,
+    const domain::ZoneEntryEvent& zoneEntryEvent,
     const domain::Zone& zone,
     const std::optional<std::reference_wrapper<const domain::Employee>>& employee,
     const domain::MachineState& machineState,
     const domain::AccessPolicy& accessPolicy
 ) {
     decision::DecisionContext context{
-        detection,
+        zoneEntryEvent,
         zone,
         employee,
         machineState,
         accessPolicy
     };
-    context.isInsideZone = true;
+    context.hasZoneEntryEvent = true;
     return context;
 }
 
-void ignoresNonPersonDetections() {
-    const auto detection = makeDetection(domain::ObjectClass::Vehicle);
+void allowsWhenNoZoneEntryEventAndClearsExistingAlarm() {
+    const auto event = makeZoneEntryEvent();
     const auto zone = makeZone();
     const auto employee = makeEmployee();
     const auto machineState = makeMachineState();
     const auto policy = makeAccessPolicy();
-
-    const auto result = decision::DecisionEngine{}.evaluate(
-        makeContext(detection, zone, std::cref(employee), machineState, policy)
-    );
-
-    assert(result.type == domain::AccessDecisionType::Ignored);
-    assert(result.reason == decision::DecisionReasons::NonPersonDetection);
-    assert(!result.shouldCreateAlarm);
-}
-
-void allowsPersonOutsideZoneAndClearsExistingAlarm() {
-    const auto detection = makeDetection();
-    const auto zone = makeZone();
-    const auto employee = makeEmployee();
-    const auto machineState = makeMachineState();
-    const auto policy = makeAccessPolicy();
-    auto context = makeContext(detection, zone, std::cref(employee), machineState, policy);
-    context.isInsideZone = false;
+    auto context = makeContext(event, zone, std::cref(employee), machineState, policy);
+    context.hasZoneEntryEvent = false;
     context.hadActiveAlarm = true;
 
     const auto result = decision::DecisionEngine{}.evaluate(context);
@@ -124,11 +108,11 @@ void allowsPersonOutsideZoneAndClearsExistingAlarm() {
 }
 
 void returnsPendingIdentityWhileGracePeriodIsActive() {
-    const auto detection = makeDetection();
+    const auto event = makeZoneEntryEvent();
     const auto zone = makeZone();
     const auto machineState = makeMachineState();
     const auto policy = makeAccessPolicy();
-    auto context = makeContext(detection, zone, std::nullopt, machineState, policy);
+    auto context = makeContext(event, zone, std::nullopt, machineState, policy);
     context.isIdentityGracePeriodActive = true;
 
     const auto result = decision::DecisionEngine{}.evaluate(context);
@@ -139,11 +123,11 @@ void returnsPendingIdentityWhileGracePeriodIsActive() {
 }
 
 void createsUnknownIdentityAlarmAfterGracePeriodExpires() {
-    const auto detection = makeDetection();
+    const auto event = makeZoneEntryEvent();
     const auto zone = makeZone(domain::ZoneType::Safe);
     const auto machineState = makeMachineState();
     const auto policy = makeAccessPolicy();
-    const auto context = makeContext(detection, zone, std::nullopt, machineState, policy);
+    const auto context = makeContext(event, zone, std::nullopt, machineState, policy);
 
     const auto result = decision::DecisionEngine{}.evaluate(context);
 
@@ -153,11 +137,11 @@ void createsUnknownIdentityAlarmAfterGracePeriodExpires() {
 }
 
 void createsUnknownIdentityAlarmInInactiveZoneAfterGracePeriodExpires() {
-    const auto detection = makeDetection();
+    const auto event = makeZoneEntryEvent();
     const auto zone = makeZone(domain::ZoneType::Safe, domain::ZoneStatus::Inactive);
     const auto machineState = makeMachineState();
     const auto policy = makeAccessPolicy();
-    const auto context = makeContext(detection, zone, std::nullopt, machineState, policy);
+    const auto context = makeContext(event, zone, std::nullopt, machineState, policy);
 
     const auto result = decision::DecisionEngine{}.evaluate(context);
 
@@ -167,14 +151,14 @@ void createsUnknownIdentityAlarmInInactiveZoneAfterGracePeriodExpires() {
 }
 
 void allowsIdentifiedEmployeeInInactiveZone() {
-    const auto detection = makeDetection();
+    const auto event = makeZoneEntryEvent();
     const auto zone = makeZone(domain::ZoneType::Dangerous, domain::ZoneStatus::Inactive);
     const auto employee = makeEmployee();
     const auto machineState = makeMachineState(domain::MachineStatus::Running);
     const auto policy = makeAccessPolicy({"manager"}, {domain::MachineStatus::Maintenance});
 
     const auto result = decision::DecisionEngine{}.evaluate(
-        makeContext(detection, zone, std::cref(employee), machineState, policy)
+        makeContext(event, zone, std::cref(employee), machineState, policy)
     );
 
     assert(result.type == domain::AccessDecisionType::Allowed);
@@ -183,14 +167,14 @@ void allowsIdentifiedEmployeeInInactiveZone() {
 }
 
 void allowsIdentifiedEmployeeInSafeZone() {
-    const auto detection = makeDetection();
+    const auto event = makeZoneEntryEvent();
     const auto zone = makeZone(domain::ZoneType::Safe);
     const auto employee = makeEmployee({"visitor"});
     const auto machineState = makeMachineState(domain::MachineStatus::Running);
     const auto policy = makeAccessPolicy({"maintenance"}, {domain::MachineStatus::Stopped});
 
     const auto result = decision::DecisionEngine{}.evaluate(
-        makeContext(detection, zone, std::cref(employee), machineState, policy)
+        makeContext(event, zone, std::cref(employee), machineState, policy)
     );
 
     assert(result.type == domain::AccessDecisionType::Allowed);
@@ -199,14 +183,14 @@ void allowsIdentifiedEmployeeInSafeZone() {
 }
 
 void createsViolationForInactiveEmployee() {
-    const auto detection = makeDetection();
+    const auto event = makeZoneEntryEvent();
     const auto zone = makeZone();
     const auto employee = makeEmployee({"maintenance"}, domain::EmployeeStatus::Inactive);
     const auto machineState = makeMachineState();
     const auto policy = makeAccessPolicy();
 
     const auto result = decision::DecisionEngine{}.evaluate(
-        makeContext(detection, zone, std::cref(employee), machineState, policy)
+        makeContext(event, zone, std::cref(employee), machineState, policy)
     );
 
     assert(result.type == domain::AccessDecisionType::Violation);
@@ -215,14 +199,14 @@ void createsViolationForInactiveEmployee() {
 }
 
 void createsViolationForDeniedMachineState() {
-    const auto detection = makeDetection();
+    const auto event = makeZoneEntryEvent();
     const auto zone = makeZone();
     const auto employee = makeEmployee();
     const auto machineState = makeMachineState(domain::MachineStatus::Running);
     const auto policy = makeAccessPolicy({"maintenance"}, {domain::MachineStatus::Stopped});
 
     const auto result = decision::DecisionEngine{}.evaluate(
-        makeContext(detection, zone, std::cref(employee), machineState, policy)
+        makeContext(event, zone, std::cref(employee), machineState, policy)
     );
 
     assert(result.type == domain::AccessDecisionType::Violation);
@@ -231,14 +215,14 @@ void createsViolationForDeniedMachineState() {
 }
 
 void createsViolationForDeniedRole() {
-    const auto detection = makeDetection();
+    const auto event = makeZoneEntryEvent();
     const auto zone = makeZone();
     const auto employee = makeEmployee({"visitor"});
     const auto machineState = makeMachineState();
     const auto policy = makeAccessPolicy({"maintenance"}, {domain::MachineStatus::Stopped});
 
     const auto result = decision::DecisionEngine{}.evaluate(
-        makeContext(detection, zone, std::cref(employee), machineState, policy)
+        makeContext(event, zone, std::cref(employee), machineState, policy)
     );
 
     assert(result.type == domain::AccessDecisionType::Violation);
@@ -247,14 +231,14 @@ void createsViolationForDeniedRole() {
 }
 
 void allowsEmployeeWithAllowedRoleAndMachineState() {
-    const auto detection = makeDetection();
+    const auto event = makeZoneEntryEvent();
     const auto zone = makeZone();
     const auto employee = makeEmployee({"maintenance"});
     const auto machineState = makeMachineState(domain::MachineStatus::Stopped);
     const auto policy = makeAccessPolicy({"maintenance"}, {domain::MachineStatus::Stopped});
 
     const auto result = decision::DecisionEngine{}.evaluate(
-        makeContext(detection, zone, std::cref(employee), machineState, policy)
+        makeContext(event, zone, std::cref(employee), machineState, policy)
     );
 
     assert(result.type == domain::AccessDecisionType::Allowed);
@@ -265,8 +249,7 @@ void allowsEmployeeWithAllowedRoleAndMachineState() {
 }
 
 int main() {
-    ignoresNonPersonDetections();
-    allowsPersonOutsideZoneAndClearsExistingAlarm();
+    allowsWhenNoZoneEntryEventAndClearsExistingAlarm();
     returnsPendingIdentityWhileGracePeriodIsActive();
     createsUnknownIdentityAlarmAfterGracePeriodExpires();
     createsUnknownIdentityAlarmInInactiveZoneAfterGracePeriodExpires();

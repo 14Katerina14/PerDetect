@@ -7,20 +7,20 @@
 namespace securezone::decision {
 
 LoadedDecisionContext::LoadedDecisionContext(
-    domain::Detection detection,
+    domain::ZoneEntryEvent zoneEntryEvent,
     domain::Zone zone,
     std::optional<domain::Employee> employee,
     domain::MachineState machineState,
     domain::AccessPolicy accessPolicy,
-    bool isInsideZone,
+    bool hasZoneEntryEvent,
     bool hadActiveAlarm,
     bool isIdentityGracePeriodActive
-) : detection_{std::move(detection)},
+) : zoneEntryEvent_{std::move(zoneEntryEvent)},
     zone_{std::move(zone)},
     employee_{std::move(employee)},
     machineState_{std::move(machineState)},
     accessPolicy_{std::move(accessPolicy)},
-    isInsideZone_{isInsideZone},
+    hasZoneEntryEvent_{hasZoneEntryEvent},
     hadActiveAlarm_{hadActiveAlarm},
     isIdentityGracePeriodActive_{isIdentityGracePeriodActive} {
 }
@@ -32,13 +32,13 @@ DecisionContext LoadedDecisionContext::toDecisionContext() const {
     }
 
     DecisionContext context{
-        detection_,
+        zoneEntryEvent_,
         zone_,
         employeeRef,
         machineState_,
         accessPolicy_
     };
-    context.isInsideZone = isInsideZone_;
+    context.hasZoneEntryEvent = hasZoneEntryEvent_;
     context.hadActiveAlarm = hadActiveAlarm_;
     context.isIdentityGracePeriodActive = isIdentityGracePeriodActive_;
     return context;
@@ -83,12 +83,12 @@ std::optional<LoadedDecisionContext> DecisionContextLoader::load(
     }
 
     return LoadedDecisionContext{
-        request.detection,
+        request.zoneEntryEvent,
         std::move(*zone),
         std::move(employee),
         std::move(*machineState),
         std::move(*accessPolicy),
-        request.isInsideZone,
+        request.hasZoneEntryEvent,
         request.hadActiveAlarm,
         request.isIdentityGracePeriodActive
     };

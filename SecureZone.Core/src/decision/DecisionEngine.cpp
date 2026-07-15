@@ -55,16 +55,7 @@ bool hasAllowedRole(
 }
 
 domain::AccessDecision DecisionEngine::evaluate(const DecisionContext& context) const {
-    if (context.detection.objectClass != domain::ObjectClass::Person) {
-        return makeDecision(
-            domain::AccessDecisionType::Ignored,
-            DecisionReasons::NonPersonDetection,
-            false,
-            false
-        );
-    }
-
-    if (!context.isInsideZone) {
+    if (!context.hasZoneEntryEvent) {
         return makeDecision(
             domain::AccessDecisionType::Allowed,
             DecisionReasons::PersonOutsideZone,

@@ -104,8 +104,15 @@ MetadataDecisionTriggerResult MetadataDecisionTriggerService::trigger(
                 continue;
             }
 
+            domain::ZoneEntryEvent zoneEntryEvent{};
+            zoneEntryEvent.eventId = detection.trackId + ":" + zone.zoneId;
+            zoneEntryEvent.trackId = detection.trackId;
+            zoneEntryEvent.cameraId = detection.cameraId;
+            zoneEntryEvent.sourceName = detection.cameraId;
+            zoneEntryEvent.timestamp = detection.timestamp;
+
             const decision::DecisionContextRequest contextRequest{
-                detection,
+                zoneEntryEvent,
                 zone.zoneId,
                 boundEmployeeId(trackIdentityBindingRepository_, detection.trackId),
                 isInsideZone,

@@ -44,23 +44,23 @@ public:
 };
 
 decision::DecisionContext makeContext(
-    const domain::Detection& detection,
+    const domain::ZoneEntryEvent& zoneEntryEvent,
     const domain::Zone& zone,
     const domain::MachineState& machineState,
     const domain::AccessPolicy& accessPolicy
 ) {
-    return {detection, zone, std::nullopt, machineState, accessPolicy, true, false, false};
+    return {zoneEntryEvent, zone, std::nullopt, machineState, accessPolicy, true, false, false};
 }
 
 }
 
 int main() {
     const auto timestamp = std::chrono::system_clock::now();
-    const domain::Detection detection{"track-1", "camera-1", domain::ObjectClass::Person, {}, 0.95, timestamp};
+    const domain::ZoneEntryEvent zoneEntryEvent{"event-1", "track-1", "camera-1", "Camera 1", timestamp};
     const domain::Zone zone{"zone-1", "Danger zone", "camera-1", domain::ZoneType::Dangerous};
     const domain::MachineState machine{"machine-1", domain::MachineStatus::Stopped};
     const domain::AccessPolicy policy{"policy-1", "zone-1", {}, {domain::MachineStatus::Stopped}};
-    const auto context = makeContext(detection, zone, machine, policy);
+    const auto context = makeContext(zoneEntryEvent, zone, machine, policy);
 
     FakeAlarmRepository repository;
     alarm::AlarmPersistenceService service{repository};

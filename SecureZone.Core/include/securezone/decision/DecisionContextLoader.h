@@ -5,10 +5,10 @@
 
 #include "securezone/decision/DecisionContext.h"
 #include "securezone/domain/AccessPolicy.h"
-#include "securezone/domain/Detection.h"
 #include "securezone/domain/Employee.h"
 #include "securezone/domain/MachineState.h"
 #include "securezone/domain/Zone.h"
+#include "securezone/domain/ZoneEntryEvent.h"
 #include "securezone/repository/IAccessPolicyRepository.h"
 #include "securezone/repository/IEmployeeRepository.h"
 #include "securezone/repository/IMachineRepository.h"
@@ -17,10 +17,10 @@
 namespace securezone::decision {
 
 struct DecisionContextRequest {
-    domain::Detection detection;
+    domain::ZoneEntryEvent zoneEntryEvent;
     std::string zoneId;
     std::optional<std::string> employeeId;
-    bool isInsideZone{};
+    bool hasZoneEntryEvent{};
     bool hadActiveAlarm{};
     bool isIdentityGracePeriodActive{};
 };
@@ -28,12 +28,12 @@ struct DecisionContextRequest {
 class LoadedDecisionContext {
 public:
     LoadedDecisionContext(
-        domain::Detection detection,
+        domain::ZoneEntryEvent zoneEntryEvent,
         domain::Zone zone,
         std::optional<domain::Employee> employee,
         domain::MachineState machineState,
         domain::AccessPolicy accessPolicy,
-        bool isInsideZone,
+        bool hasZoneEntryEvent,
         bool hadActiveAlarm,
         bool isIdentityGracePeriodActive
     );
@@ -41,12 +41,12 @@ public:
     DecisionContext toDecisionContext() const;
 
 private:
-    domain::Detection detection_;
+    domain::ZoneEntryEvent zoneEntryEvent_;
     domain::Zone zone_;
     std::optional<domain::Employee> employee_;
     domain::MachineState machineState_;
     domain::AccessPolicy accessPolicy_;
-    bool isInsideZone_{};
+    bool hasZoneEntryEvent_{};
     bool hadActiveAlarm_{};
     bool isIdentityGracePeriodActive_{};
 };

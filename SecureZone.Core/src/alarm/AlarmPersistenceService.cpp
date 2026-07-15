@@ -41,7 +41,7 @@ std::string createAlarmMessage(
     std::ostringstream message;
     message << decision.reason
             << " Track "
-            << context.detection.trackId
+            << context.zoneEntryEvent.trackId
             << " is inside zone "
             << context.zone.name
             << ".";
@@ -59,17 +59,17 @@ domain::Alarm createAlarm(
 ) {
     domain::Alarm alarm{};
     alarm.alarmId = createAlarmId(
-        context.detection.trackId,
+        context.zoneEntryEvent.trackId,
         context.zone.zoneId,
-        context.detection.timestamp
+        context.zoneEntryEvent.timestamp
     );
     alarm.zoneId = context.zone.zoneId;
-    alarm.trackId = context.detection.trackId;
+    alarm.trackId = context.zoneEntryEvent.trackId;
     alarm.employeeId = employeeIdFromContext(context);
     alarm.machineId = context.machineState.machineId;
     alarm.status = domain::AlarmStatus::Active;
     alarm.reason = decision.reason;
-    alarm.enteredAt = context.detection.timestamp;
+    alarm.enteredAt = context.zoneEntryEvent.timestamp;
     alarm.stillInside = true;
     alarm.message = createAlarmMessage(decision, context);
     return alarm;
@@ -88,7 +88,7 @@ AlarmPersistenceAction AlarmPersistenceService::persist(
     Clock::time_point handledAt
 ) {
     auto activeAlarm = alarmRepository_.findActiveByTrackAndZone(
-        context.detection.trackId,
+        context.zoneEntryEvent.trackId,
         context.zone.zoneId
     );
 

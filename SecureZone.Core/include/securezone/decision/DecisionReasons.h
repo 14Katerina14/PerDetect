@@ -2,8 +2,7 @@
 
 namespace securezone::decision::DecisionReasons {
 
-inline constexpr const char* NonPersonDetection = "Detected object is not a person.";
-inline constexpr const char* PersonOutsideZone = "Person is outside the zone.";
+inline constexpr const char* PersonOutsideZone = "No active zone entry event.";
 inline constexpr const char* PendingIdentity = "Waiting for identity association.";
 inline constexpr const char* UnknownIdentity = "Person identity is unknown.";
 inline constexpr const char* InactiveEmployee = "Employee is inactive.";
