@@ -9,6 +9,7 @@ const collections = [
   "zones",
   "machines",
   "alarms",
+  "webhook_targets",
   "webhook_deliveries"
 ];
 
@@ -62,6 +63,9 @@ securezone.webhook_deliveries.createIndex({ deliveryId: 1 }, { unique: true });
 securezone.webhook_deliveries.createIndex({ alarmId: 1 });
 securezone.webhook_deliveries.createIndex({ status: 1 });
 securezone.webhook_deliveries.createIndex({ lastAttemptAt: -1 });
+
+securezone.webhook_targets.createIndex({ targetId: 1 }, { unique: true });
+securezone.webhook_targets.createIndex({ status: 1 });
 
 securezone.employees.updateOne(
   { employeeId: "EMP-001" },

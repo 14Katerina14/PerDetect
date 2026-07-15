@@ -7,6 +7,7 @@
 #include "securezone/infrastructure/mongodb/repositories/MongoMachineRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoPresenceSessionRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoQrCheckinRepository.h"
+#include "securezone/infrastructure/mongodb/repositories/MongoWebhookTargetRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoZoneRepository.h"
 
 namespace securezone::infrastructure::mongodb {
@@ -22,6 +23,7 @@ public:
     repositories::MongoAlarmRepository alarmRepository();
     repositories::MongoQrCheckinRepository qrCheckinRepository();
     repositories::MongoPresenceSessionRepository presenceSessionRepository();
+    repositories::MongoWebhookTargetRepository webhookTargetRepository();
 
 private:
     MongoDbClient& client_;

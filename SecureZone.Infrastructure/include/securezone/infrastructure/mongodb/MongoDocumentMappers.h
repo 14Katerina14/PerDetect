@@ -8,6 +8,7 @@
 #include "securezone/domain/MachineState.h"
 #include "securezone/domain/PresenceSession.h"
 #include "securezone/domain/QrCheckIn.h"
+#include "securezone/domain/WebhookTarget.h"
 #include "securezone/domain/Zone.h"
 
 namespace securezone::infrastructure::mongodb {
@@ -19,5 +20,6 @@ domain::AccessPolicy mapAccessPolicyDocument(bsoncxx::document::view document);
 domain::Alarm mapAlarmDocument(bsoncxx::document::view document);
 domain::QrCheckin mapQrCheckinDocument(bsoncxx::document::view document);
 domain::PresenceSession mapPresenceSessionDocument(bsoncxx::document::view document);
+domain::WebhookTarget mapWebhookTargetDocument(bsoncxx::document::view document);
 
 }

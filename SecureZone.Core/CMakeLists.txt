@@ -3,6 +3,9 @@ project(SecureZoneCore LANGUAGES CXX)
 
 add_library(SecureZoneCore
     src/alarm/AlarmLifecycleService.cpp
+    src/configuration/AccessPolicyConfigurationService.cpp
+    src/configuration/WebhookTargetConfigurationService.cpp
+    src/configuration/ZoneConfigurationService.cpp
     src/alarm/AlarmPersistenceService.cpp
     src/decision/AccessPolicyEvaluator.cpp
     src/decision/DecisionContextLoader.cpp
@@ -21,6 +24,7 @@ set(SECUREZONE_CORE_TESTS
     AlarmPersistenceTests
     RolePermissionTests
     MachineStatusServiceTests
+    ConfigurationServicesTests
     PresenceSessionServiceTests
     WebhookNotificationServiceTests
     WebhookDeliveryServiceTests
@@ -29,6 +33,8 @@ set(SECUREZONE_CORE_TESTS
 foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
     if(test_name STREQUAL "PresenceSessionServiceTests")
         set(test_source tests/presence/PresenceSessionServiceTests.cpp)
+    elseif(test_name STREQUAL "ConfigurationServicesTests")
+        set(test_source tests/configuration/ConfigurationServicesTests.cpp)
     else()
         set(test_source tests/${test_name}.cpp)
     endif()

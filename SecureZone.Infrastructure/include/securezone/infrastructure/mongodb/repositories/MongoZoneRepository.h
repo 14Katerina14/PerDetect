@@ -22,6 +22,8 @@ public:
         const std::string& zoneId
     ) const override;
 
+    bool save(const domain::Zone& zone) override;
+
 private:
     mongocxx::collection zonesCollection_;
 };

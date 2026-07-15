@@ -103,6 +103,11 @@ public:
 
         return zone;
     }
+
+    bool save(const domain::Zone& value) override {
+        zone = value;
+        return true;
+    }
 };
 
 class FakeQrCheckinRepository final : public repository::IQrCheckinRepository {
