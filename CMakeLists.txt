@@ -11,6 +11,7 @@ enable_testing()
 option(SECUREZONE_BUILD_MONGODB_INFRA "Build MongoDB infrastructure components" ON)
 
 add_subdirectory(SecureZone.Core)
+add_subdirectory(SecureZone.Api)
 add_subdirectory(SecureZone.Tools)
 
 if(SECUREZONE_BUILD_MONGODB_INFRA)
