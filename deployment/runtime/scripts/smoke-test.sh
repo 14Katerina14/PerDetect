@@ -84,13 +84,12 @@ cleanup() {
 
 setup_script="${cleanup_script}
 database.employees.insertOne({employeeId:\"SMOKE-EMPLOYEE\",fullName:\"Smoke Test Employee\",department:\"Testing\",roles:[\"maintenance\"],status:\"active\",qrTokenHash:\"smoke-test-token-hash\"});
-database.app_users.insertOne({userId:\"SMOKE-SCANNER\",username:\"smoke-scanner\",role:\"scanner\",status:\"active\"});
 database.machines.insertOne({machineId:\"SMOKE-MACHINE\",name:\"Smoke Test Machine\",status:\"stopped\",updatedAt:new Date()});
 database.zones.insertOne({zoneId:\"SMOKE-ZONE\",name:\"Smoke Test Dangerous Zone\",cameraId:\"CAM-SMOKE\",type:\"dangerous\",status:\"active\",relatedMachineId:\"SMOKE-MACHINE\",xprotectEventName:\"SecureZone.OpenSDK.WiseAI.LineCrossing.Smoke.State-2\"});
 database.access_policies.insertOne({policyId:\"SMOKE-POLICY\",zoneId:\"SMOKE-ZONE\",allowedRoles:[\"maintenance\"],machineStatesAllowed:[\"stopped\",\"maintenance\"],timeWindows:[]});"
 
 api_port="$(read_env_value SECUREZONE_API_HOST_PORT)"
-api_port="${api_port:-8080}"
+api_port="${api_port:-18080}"
 api_key="$(read_env_value SECUREZONE_XPROTECT_API_KEY)"
 if [[ -z "${api_key}" || "${api_key}" == \<* ]]; then
   echo "Error: SECUREZONE_XPROTECT_API_KEY must have a real local development value in deployment/runtime/.env." >&2
@@ -104,7 +103,7 @@ camera_id='CAM-SMOKE'
 unknown_object_id='SMOKE-UNKNOWN-OBJECT'
 authorized_object_id='SMOKE-AUTHORIZED-OBJECT'
 
-echo "[1/7] Health check"
+echo "[1/8] Health check"
 health="$(curl --fail-with-body --silent --show-error "${base_uri}/health")"
 json_has_string "${health}" status ok || { echo "Error: health check returned an unexpected JSON status." >&2; exit 1; }
 
@@ -112,7 +111,22 @@ echo "Preparing isolated MongoDB smoke fixtures..."
 trap cleanup EXIT
 mongo_exec "${setup_script}" >/dev/null
 
-echo "[2/7] Unknown camera object -> violation"
+echo "[2/8] Provision scanner and obtain JWT"
+scanner_password="Smoke-$(date -u +%s%N)-${RANDOM}${RANDOM}"
+printf '%s\n' "${scanner_password}" | docker compose \
+  --env-file "${env_file}" -f "${compose_file}" \
+  exec -T securezone-api /app/SecureZone.ProvisionUser \
+  --user-id SMOKE-SCANNER --username smoke-scanner --role scanner >/dev/null
+login_payload="$(printf '{\"username\":\"smoke-scanner\",\"password\":\"%s\"}' "${scanner_password}")"
+login_result="$(curl --fail-with-body --silent --show-error --request POST \
+  --header 'Content-Type: application/json' \
+  --data "${login_payload}" \
+  "${base_uri}/api/auth/login")"
+access_token="$(sed -n 's/.*\"accessToken\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p' <<<"${login_result}")"
+unset scanner_password
+[[ -n "${access_token}" ]] || { echo "Error: scanner login did not return an access token." >&2; exit 1; }
+
+echo "[3/8] Unknown camera object -> violation"
 unknown_enter_id="smoke-unknown-enter-$(date -u +%s%N)-${RANDOM}"
 received_at="$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)"
 unknown_enter_payload="$(printf '{\"eventId\":\"%s\",\"eventName\":\"%s\",\"sourceName\":\"%s\",\"receivedAt\":\"%s\",\"cameraId\":\"%s\",\"objectId\":\"%s\",\"action\":\"enter\"}' "${unknown_enter_id}" "${event_name}" "${source_name}" "${received_at}" "${camera_id}" "${unknown_object_id}")"
@@ -124,7 +138,7 @@ unknown_enter_result="$(curl --fail-with-body --silent --show-error --request PO
 json_has_true "${unknown_enter_result}" accepted || { echo "Error: unknown-object LineCrossing was not accepted." >&2; exit 1; }
 json_has_string "${unknown_enter_result}" decision violation || { echo "Error: unknown object did not return violation." >&2; exit 1; }
 
-echo "[3/7] Unknown camera object exit -> alarm cleared"
+echo "[4/8] Unknown camera object exit -> alarm cleared"
 unknown_exit_id="smoke-unknown-exit-$(date -u +%s%N)-${RANDOM}"
 received_at="$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)"
 unknown_exit_payload="$(printf '{\"eventId\":\"%s\",\"eventName\":\"%s\",\"sourceName\":\"%s\",\"receivedAt\":\"%s\",\"cameraId\":\"%s\",\"objectId\":\"%s\",\"action\":\"exit\"}' "${unknown_exit_id}" "${event_name}" "${source_name}" "${received_at}" "${camera_id}" "${unknown_object_id}")"
@@ -136,7 +150,7 @@ unknown_exit_result="$(curl --fail-with-body --silent --show-error --request POS
 json_has_true "${unknown_exit_result}" accepted || { echo "Error: unknown-object exit was not accepted." >&2; exit 1; }
 json_has_string "${unknown_exit_result}" decision cleared || { echo "Error: unknown-object exit did not clear the alarm." >&2; exit 1; }
 
-echo "[4/7] Recent Human camera observation"
+echo "[5/8] Recent Human camera observation"
 observed_at="$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)"
 observation_payload="$(printf '{\"cameraId\":\"%s\",\"objectId\":\"%s\",\"objectType\":\"Human\",\"observedAt\":\"%s\"}' "${camera_id}" "${authorized_object_id}" "${observed_at}")"
 observation_result="$(curl --fail-with-body --silent --show-error --request POST \
@@ -147,10 +161,11 @@ observation_result="$(curl --fail-with-body --silent --show-error --request POST
 json_has_true "${observation_result}" accepted || { echo "Error: Human observation was not accepted." >&2; exit 1; }
 json_has_string "${observation_result}" status observed || { echo "Error: Human observation did not return status observed." >&2; exit 1; }
 
-echo "[5/7] QR check-in -> camera object identity binding"
-check_in_payload="$(printf '{\"employeeId\":\"SMOKE-EMPLOYEE\",\"zoneId\":\"SMOKE-ZONE\",\"scannedByUserId\":\"SMOKE-SCANNER\",\"cameraId\":\"%s\"}' "${camera_id}")"
+echo "[6/8] Authenticated QR check-in -> camera object identity binding"
+check_in_payload="$(printf '{\"employeeId\":\"SMOKE-EMPLOYEE\",\"zoneId\":\"SMOKE-ZONE\",\"cameraId\":\"%s\"}' "${camera_id}")"
 check_in_result="$(curl --fail-with-body --silent --show-error --request POST \
   --header 'Content-Type: application/json' \
+  --header "Authorization: Bearer ${access_token}" \
   --data "${check_in_payload}" \
   "${base_uri}/api/qr/check-in")"
 json_has_true "${check_in_result}" accepted || { echo "Error: QR check-in was not accepted." >&2; exit 1; }
@@ -158,7 +173,7 @@ json_has_any_string "${check_in_result}" status 'started|extended|already_active
 json_has_string "${check_in_result}" objectId "${authorized_object_id}" || { echo "Error: QR check-in bound the wrong camera object." >&2; exit 1; }
 json_has_nonempty_string "${check_in_result}" bindingId || { echo "Error: QR check-in did not return a bindingId." >&2; exit 1; }
 
-echo "[6/7] Bound camera object -> allowed"
+echo "[7/8] Bound camera object -> allowed"
 authorized_event_id="smoke-authorized-enter-$(date -u +%s%N)-${RANDOM}"
 received_at="$(date -u +%Y-%m-%dT%H:%M:%S.%NZ)"
 authorized_payload="$(printf '{\"eventId\":\"%s\",\"eventName\":\"%s\",\"sourceName\":\"%s\",\"receivedAt\":\"%s\",\"cameraId\":\"%s\",\"objectId\":\"%s\",\"action\":\"enter\"}' "${authorized_event_id}" "${event_name}" "${source_name}" "${received_at}" "${camera_id}" "${authorized_object_id}")"
@@ -172,7 +187,7 @@ json_has_string "${authorized_result}" decision allowed || { echo "Error: bound 
 json_has_string "${authorized_result}" zoneId SMOKE-ZONE || { echo "Error: allowed decision returned the wrong zoneId." >&2; exit 1; }
 json_has_string "${authorized_result}" employeeId SMOKE-EMPLOYEE || { echo "Error: allowed decision returned the wrong employeeId." >&2; exit 1; }
 
-echo "[7/7] Cleanup"
+echo "[8/8] Cleanup"
 cleanup
 trap - EXIT
 

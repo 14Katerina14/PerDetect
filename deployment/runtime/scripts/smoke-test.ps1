@@ -84,6 +84,17 @@ function Invoke-MongoScript {
     throw "MongoDB smoke fixture command failed."
 }
 
+function Invoke-ScannerProvisioning {
+    param([Parameter(Mandatory)][string]$Password)
+
+    $Password | & docker compose --env-file $envFile -f $composeFile `
+        exec -T securezone-api /app/SecureZone.ProvisionUser `
+        --user-id SMOKE-SCANNER --username smoke-scanner --role scanner | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Scanner application-user provisioning failed."
+    }
+}
+
 $cleanupScript = @'
 const database = db.getSiblingDB(process.env.MONGO_INITDB_DATABASE || "securezone");
 database.qr_checkins.deleteMany({$or:[{employeeId:"SMOKE-EMPLOYEE"},{zoneId:"SMOKE-ZONE"},{scannedByUserId:"SMOKE-SCANNER"}]});
@@ -101,14 +112,13 @@ database.employees.deleteMany({employeeId:"SMOKE-EMPLOYEE"});
 $setupScript = $cleanupScript + @'
 
 database.employees.insertOne({employeeId:"SMOKE-EMPLOYEE",fullName:"Smoke Test Employee",department:"Testing",roles:["maintenance"],status:"active",qrTokenHash:"smoke-test-token-hash"});
-database.app_users.insertOne({userId:"SMOKE-SCANNER",username:"smoke-scanner",role:"scanner",status:"active"});
 database.machines.insertOne({machineId:"SMOKE-MACHINE",name:"Smoke Test Machine",status:"stopped",updatedAt:new Date()});
 database.zones.insertOne({zoneId:"SMOKE-ZONE",name:"Smoke Test Dangerous Zone",cameraId:"CAM-SMOKE",type:"dangerous",status:"active",relatedMachineId:"SMOKE-MACHINE",xprotectEventName:"SecureZone.OpenSDK.WiseAI.LineCrossing.Smoke.State-2"});
 database.access_policies.insertOne({policyId:"SMOKE-POLICY",zoneId:"SMOKE-ZONE",allowedRoles:["maintenance"],machineStatesAllowed:["stopped","maintenance"],timeWindows:[]});
 '@
 
 $apiPort = Get-DotEnvValue "SECUREZONE_API_HOST_PORT"
-if ([string]::IsNullOrWhiteSpace($apiPort)) { $apiPort = "8080" }
+if ([string]::IsNullOrWhiteSpace($apiPort)) { $apiPort = "18080" }
 
 $apiKey = Get-DotEnvValue "SECUREZONE_XPROTECT_API_KEY"
 if ([string]::IsNullOrWhiteSpace($apiKey) -or $apiKey.StartsWith("<")) {
@@ -126,14 +136,25 @@ $flowSucceeded = $false
 $cleanupSucceeded = $false
 
 try {
-    Write-Host "[1/7] Health check"
+    Write-Host "[1/8] Health check"
     $health = Invoke-RestMethod -Method Get -Uri "$baseUri/health"
     Assert-FieldEquals $health "status" "ok" "Health check"
 
     Write-Host "Preparing isolated MongoDB smoke fixtures..."
     Invoke-MongoScript -Script $setupScript | Out-Null
 
-    Write-Host "[2/7] Unknown camera object -> violation"
+    Write-Host "[2/8] Provision scanner and obtain JWT"
+    $scannerPassword = "Smoke-$([guid]::NewGuid().ToString('N'))"
+    Invoke-ScannerProvisioning -Password $scannerPassword
+    $loginBody = @{ username = "smoke-scanner"; password = $scannerPassword } |
+        ConvertTo-Json -Compress
+    $loginResult = Invoke-RestMethod -Method Post -Uri "$baseUri/api/auth/login" `
+        -ContentType "application/json" -Body $loginBody
+    Assert-NonEmptyField $loginResult "accessToken" "Scanner login"
+    $scannerHeaders = @{ Authorization = "Bearer $($loginResult.accessToken)" }
+    $scannerPassword = $null
+
+    Write-Host "[3/8] Unknown camera object -> violation"
     $unknownEnter = @{
         eventId = "smoke-unknown-enter-$([guid]::NewGuid().ToString('N'))"
         eventName = $eventName
@@ -149,7 +170,7 @@ try {
     Assert-FieldEquals $unknownEnterDecision "accepted" $true "Unknown-object LineCrossing"
     Assert-FieldEquals $unknownEnterDecision "decision" "violation" "Unknown-object LineCrossing"
 
-    Write-Host "[3/7] Unknown camera object exit -> alarm cleared"
+    Write-Host "[4/8] Unknown camera object exit -> alarm cleared"
     $unknownExit = @{
         eventId = "smoke-unknown-exit-$([guid]::NewGuid().ToString('N'))"
         eventName = $eventName
@@ -165,7 +186,7 @@ try {
     Assert-FieldEquals $unknownExitDecision "accepted" $true "Unknown-object exit"
     Assert-FieldEquals $unknownExitDecision "decision" "cleared" "Unknown-object exit"
 
-    Write-Host "[4/7] Recent Human camera observation"
+    Write-Host "[5/8] Recent Human camera observation"
     $observation = @{
         cameraId = $cameraId
         objectId = $authorizedObjectId
@@ -178,21 +199,20 @@ try {
     Assert-FieldEquals $observationResult "accepted" $true "Human observation"
     Assert-FieldEquals $observationResult "status" "observed" "Human observation"
 
-    Write-Host "[5/7] QR check-in -> camera object identity binding"
+    Write-Host "[6/8] Authenticated QR check-in -> camera object identity binding"
     $checkIn = @{
         employeeId = "SMOKE-EMPLOYEE"
         zoneId = "SMOKE-ZONE"
-        scannedByUserId = "SMOKE-SCANNER"
         cameraId = $cameraId
     } | ConvertTo-Json -Compress
     $checkInResult = Invoke-RestMethod -Method Post -Uri "$baseUri/api/qr/check-in" `
-        -ContentType "application/json" -Body $checkIn
+        -Headers $scannerHeaders -ContentType "application/json" -Body $checkIn
     Assert-FieldEquals $checkInResult "accepted" $true "QR check-in"
     Assert-FieldIn $checkInResult "status" @("started", "extended", "already_active") "QR check-in"
     Assert-FieldEquals $checkInResult "objectId" $authorizedObjectId "QR check-in"
     Assert-NonEmptyField $checkInResult "bindingId" "QR check-in"
 
-    Write-Host "[6/7] Bound camera object -> allowed"
+    Write-Host "[7/8] Bound camera object -> allowed"
     $authorizedEvent = @{
         eventId = "smoke-authorized-enter-$([guid]::NewGuid().ToString('N'))"
         eventName = $eventName
@@ -213,7 +233,7 @@ try {
     $flowSucceeded = $true
 }
 finally {
-    Write-Host "[7/7] Cleanup"
+    Write-Host "[8/8] Cleanup"
     $cleanupSucceeded = Invoke-MongoScript -Script $cleanupScript -IgnoreErrors
 }
 

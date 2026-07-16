@@ -66,7 +66,8 @@ jobs:
           MONGO_INITDB_DATABASE: securezone
           SECUREZONE_MONGO_URI: mongodb://ci_user:ci_password@mongodb:27017/securezone?authSource=admin
           SECUREZONE_XPROTECT_API_KEY: ci-test-only-api-key
-          SECUREZONE_API_HOST_PORT: "8080"
+          SECUREZONE_JWT_SECRET: ci-jwt-secret-placeholder-at-least-32-bytes
+          SECUREZONE_API_HOST_PORT: "18080"
         run: |
           set -euo pipefail
           docker compose -f deployment/runtime/docker-compose.yml config

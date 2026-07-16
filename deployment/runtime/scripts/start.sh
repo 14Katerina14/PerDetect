@@ -15,5 +15,5 @@ echo "Validating SecureZone runtime configuration..."
 docker compose --env-file "${env_file}" -f "${compose_file}" config --quiet
 
 echo "Building and starting SecureZone runtime..."
-docker compose --env-file "${env_file}" -f "${compose_file}" up -d --build
+docker compose --env-file "${env_file}" -f "${compose_file}" up -d --build --wait --wait-timeout 180
 docker compose --env-file "${env_file}" -f "${compose_file}" ps

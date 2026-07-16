@@ -13,7 +13,7 @@ docker compose --env-file $envFile -f $composeFile config --quiet
 if ($LASTEXITCODE -ne 0) { throw "Docker Compose configuration validation failed." }
 
 Write-Host "Building and starting SecureZone runtime..."
-docker compose --env-file $envFile -f $composeFile up -d --build
+docker compose --env-file $envFile -f $composeFile up -d --build --wait --wait-timeout 180
 if ($LASTEXITCODE -ne 0) { throw "Docker Compose failed to start the SecureZone runtime." }
 
 docker compose --env-file $envFile -f $composeFile ps

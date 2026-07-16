@@ -27,8 +27,10 @@ cp .env.example .env
 
 Never commit `.env`. Use a long random value for
 `SECUREZONE_XPROTECT_API_KEY`, and configure the same value in the backend and
-the XProtect plug-in. The MongoDB username used in `SECUREZONE_MONGO_URI` must
-match `MONGO_INITDB_ROOT_USERNAME`.
+the XProtect plug-in. Generate a separate random value of at least 32 bytes for
+`SECUREZONE_JWT_SECRET`; it signs mobile/API access tokens and must never be
+shared with the plug-in. The MongoDB username used in
+`SECUREZONE_MONGO_URI` must match `MONGO_INITDB_ROOT_USERNAME`.
 
 If the MongoDB password contains reserved characters such as `@`, `:`, `/`,
 `?`, `#`, `[` or `]`, URL-encode the password inside `SECUREZONE_MONGO_URI`.
@@ -54,21 +56,21 @@ Bash:
 ```
 
 The start script first runs `docker compose config --quiet`, then builds and
-starts both services and displays their status. The logs scripts follow the
-last 200 lines. Pass either `mongodb` or `securezone-api` to follow one service;
-omit the argument to follow both.
+starts both services, waits until their health checks pass, and displays their
+status. The logs scripts follow the last 200 lines. Pass either `mongodb` or
+`securezone-api` to follow one service; omit the argument to follow both.
 
 Check API health directly with:
 
 ```powershell
-Invoke-RestMethod http://127.0.0.1:8080/health
+Invoke-RestMethod http://127.0.0.1:18080/health
 ```
 
 ```bash
-curl --fail --silent --show-error http://127.0.0.1:8080/health
+curl --fail --silent --show-error http://127.0.0.1:18080/health
 ```
 
-Replace `8080` if `SECUREZONE_API_HOST_PORT` is different.
+Replace `18080` if `SECUREZONE_API_HOST_PORT` is different.
 
 ## Camera identity and access-decision flow
 
@@ -76,12 +78,14 @@ The backend does not authorize a person from a zone-level presence record
 alone. The runtime flow is:
 
 1. XProtect sends a recent `Human` observation with `cameraId` and `objectId`.
-2. The QR scanner submits the employee, zone, scanner user, and the same
-   `cameraId`.
-3. The backend binds the employee to the latest unbound Human object from that
+2. The smoke test securely provisions a temporary scanner account, logs in,
+   and obtains a JWT.
+3. The authenticated QR scanner submits the employee, zone, and the same
+   `cameraId`; the backend takes the scanner identity from the JWT.
+4. The backend binds the employee to the latest unbound Human object from that
    camera for the lifetime of the presence session.
-4. XProtect sends LineCrossing with the same `cameraId` and `objectId`.
-5. The backend evaluates employee roles, zone policy, machine state, and the
+5. XProtect sends LineCrossing with the same `cameraId` and `objectId`.
+6. The backend evaluates employee roles, zone policy, machine state, and the
    active identity binding, then returns `allowed` or `violation`.
 
 Do not omit `cameraId` from QR requests or `cameraId`/`objectId` from
@@ -97,11 +101,13 @@ Each run verifies:
 2. An unknown camera object entering the smoke zone returns `violation`.
 3. The same object exiting returns `cleared`, so no test alarm remains active.
 4. A recent Human observation is accepted for `CAM-SMOKE`.
-5. QR check-in includes `cameraId`, binds `SMOKE-EMPLOYEE` to the observed
+5. A temporary scanner is provisioned with Argon2id, logs in, and receives a
+   JWT without storing a password or password hash in the repository.
+6. Authenticated QR check-in includes `cameraId`, binds `SMOKE-EMPLOYEE` to the observed
    object, and returns a non-empty `bindingId`.
-6. LineCrossing for the bound `cameraId`/`objectId` returns `allowed` for the
+7. LineCrossing for the bound `cameraId`/`objectId` returns `allowed` for the
    isolated maintenance employee while the isolated machine is `stopped`.
-7. Temporary employees, scanner users, machines, zones, policies, sessions,
+8. Temporary employees, scanner users, machines, zones, policies, sessions,
    tracks, bindings, and alarms are removed.
 
 ```powershell
@@ -150,7 +156,7 @@ http://<docker-host-ip>:<SECUREZONE_API_HOST_PORT>/api/xprotect/line-crossing
 
 Use the Docker host machine's reachable IP address. Do not use `localhost`
 unless XProtect Event Server and the Docker backend run on the same machine.
-Allow the configured API host port (default `8080`) through the host firewall
+Allow the configured API host port (default `18080`) through the host firewall
 only for the machines that need it.
 
 MongoDB's container port `27017` is published as host port `27018` by default,
@@ -165,7 +171,7 @@ The scripts are wrappers around these commands:
 
 ```text
 docker compose --env-file .env -f docker-compose.yml config --quiet
-docker compose --env-file .env -f docker-compose.yml up -d --build
+docker compose --env-file .env -f docker-compose.yml up -d --build --wait --wait-timeout 180
 docker compose --env-file .env -f docker-compose.yml ps
 docker compose --env-file .env -f docker-compose.yml logs --tail 200 -f
 docker compose --env-file .env -f docker-compose.yml down
