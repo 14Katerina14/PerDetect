@@ -7,7 +7,11 @@
 
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
+#include <exception>
 #include <utility>
+#include <vector>
+#include <mongocxx/options/find.hpp>
 
 #include "securezone/infrastructure/mongodb/MongoDocumentMappers.h"
 
@@ -128,6 +132,47 @@ std::optional<domain::PresenceSession> MongoPresenceSessionRepository::findActiv
     }
 
     return mapPresenceSessionDocument(result->view());
+}
+
+std::vector<domain::PresenceSession> MongoPresenceSessionRepository::findActiveAt(
+    Clock::time_point at,
+    std::size_t limit,
+    const std::optional<std::string>& zoneId
+) const {
+    bsoncxx::builder::basic::document filter;
+    filter.append(
+        bsoncxx::builder::basic::kvp(StatusField, ActiveStatus),
+        bsoncxx::builder::basic::kvp(
+            "startedAt",
+            [at](bsoncxx::builder::basic::sub_document value) {
+                value.append(bsoncxx::builder::basic::kvp("$lte", toBsonDate(at)));
+            }
+        ),
+        bsoncxx::builder::basic::kvp(
+            "expiresAt",
+            [at](bsoncxx::builder::basic::sub_document value) {
+                value.append(bsoncxx::builder::basic::kvp("$gte", toBsonDate(at)));
+            }
+        )
+    );
+    if (zoneId.has_value() && !zoneId->empty()) {
+        filter.append(bsoncxx::builder::basic::kvp(ZoneIdField, *zoneId));
+    }
+
+    mongocxx::options::find options;
+    options.sort(bsoncxx::builder::basic::make_document(
+        bsoncxx::builder::basic::kvp("startedAt", -1)
+    ));
+    options.limit(static_cast<std::int64_t>(limit));
+
+    std::vector<domain::PresenceSession> sessions;
+    for (const auto& document : presenceSessionsCollection_.find(filter.view(), options)) {
+        try {
+            sessions.push_back(mapPresenceSessionDocument(document));
+        } catch (const std::exception&) {
+        }
+    }
+    return sessions;
 }
 
 void MongoPresenceSessionRepository::create(
