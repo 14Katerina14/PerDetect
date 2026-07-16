@@ -135,7 +135,7 @@ domain::EmployeeStatus employeeStatusFromString(const std::string& value) {
         return domain::EmployeeStatus::Inactive;
     }
 
-    return domain::EmployeeStatus::Inactive;
+    throw std::runtime_error("Unknown MongoDB employee status: " + value);
 }
 
 domain::AppUserRole appUserRoleFromString(const std::string& value) {
@@ -175,7 +175,11 @@ domain::ZoneType zoneTypeFromString(const std::string& value) {
         return domain::ZoneType::Restricted;
     }
 
-    return domain::ZoneType::Dangerous;
+    if (value == "dangerous") {
+        return domain::ZoneType::Dangerous;
+    }
+
+    throw std::runtime_error("Unknown MongoDB zone type: " + value);
 }
 
 domain::ZoneStatus zoneStatusFromString(const std::string& value) {
@@ -183,7 +187,11 @@ domain::ZoneStatus zoneStatusFromString(const std::string& value) {
         return domain::ZoneStatus::Active;
     }
 
-    return domain::ZoneStatus::Inactive;
+    if (value == "inactive") {
+        return domain::ZoneStatus::Inactive;
+    }
+
+    throw std::runtime_error("Unknown MongoDB zone status: " + value);
 }
 
 domain::MachineStatus machineStatusFromString(const std::string& value) {
@@ -195,7 +203,11 @@ domain::MachineStatus machineStatusFromString(const std::string& value) {
         return domain::MachineStatus::Maintenance;
     }
 
-    return domain::MachineStatus::Stopped;
+    if (value == "stopped") {
+        return domain::MachineStatus::Stopped;
+    }
+
+    throw std::runtime_error("Unknown MongoDB machine status: " + value);
 }
 
 domain::AlarmStatus alarmStatusFromString(const std::string& value) {
@@ -211,25 +223,31 @@ domain::AlarmStatus alarmStatusFromString(const std::string& value) {
         return domain::AlarmStatus::Resolved;
     }
 
-    return domain::AlarmStatus::Active;
+    if (value == "active") {
+        return domain::AlarmStatus::Active;
+    }
+
+    throw std::runtime_error("Unknown MongoDB alarm status: " + value);
 }
 
 domain::QrCheckInStatus qrCheckinStatusFromString(const std::string& value) {
     if (value == "active") return domain::QrCheckInStatus::Active;
     if (value == "expired") return domain::QrCheckInStatus::Expired;
-    return domain::QrCheckInStatus::Revoked;
+    if (value == "revoked") return domain::QrCheckInStatus::Revoked;
+    throw std::runtime_error("Unknown MongoDB QR check-in status: " + value);
 }
 
 domain::PresenceSessionStatus presenceSessionStatusFromString(const std::string& value) {
     if (value == "active") return domain::PresenceSessionStatus::Active;
     if (value == "ended") return domain::PresenceSessionStatus::Ended;
-    return domain::PresenceSessionStatus::Expired;
+    if (value == "expired") return domain::PresenceSessionStatus::Expired;
+    throw std::runtime_error("Unknown MongoDB presence session status: " + value);
 }
 
 domain::WebhookTargetStatus webhookTargetStatusFromString(const std::string& value) {
-    return value == "active"
-        ? domain::WebhookTargetStatus::Active
-        : domain::WebhookTargetStatus::Inactive;
+    if (value == "active") return domain::WebhookTargetStatus::Active;
+    if (value == "inactive") return domain::WebhookTargetStatus::Inactive;
+    throw std::runtime_error("Unknown MongoDB webhook target status: " + value);
 }
 
 std::vector<domain::MachineStatus> machineStatusArray(

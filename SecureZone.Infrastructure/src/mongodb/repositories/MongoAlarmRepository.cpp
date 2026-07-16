@@ -8,7 +8,11 @@
 #include <chrono>
 #include <cstddef>
 #include <optional>
+#include <cstdint>
+#include <exception>
+#include <vector>
 #include <utility>
+#include <mongocxx/options/find.hpp>
 
 #include "securezone/infrastructure/mongodb/MongoDocumentMappers.h"
 
@@ -157,6 +161,32 @@ std::size_t MongoAlarmRepository::countActiveByZone(const std::string& zoneId) c
     );
 
     return static_cast<std::size_t>(alarmsCollection_.count_documents(filter.view()));
+}
+
+std::vector<domain::Alarm> MongoAlarmRepository::findActive(
+    std::size_t limit,
+    const std::optional<std::string>& zoneId
+) const {
+    bsoncxx::builder::basic::document filter;
+    filter.append(bsoncxx::builder::basic::kvp(StatusField, activeStatusFilter()));
+    if (zoneId.has_value() && !zoneId->empty()) {
+        filter.append(bsoncxx::builder::basic::kvp(ZoneIdField, *zoneId));
+    }
+
+    mongocxx::options::find options;
+    options.sort(bsoncxx::builder::basic::make_document(
+        bsoncxx::builder::basic::kvp("enteredAt", -1)
+    ));
+    options.limit(static_cast<std::int64_t>(limit));
+
+    std::vector<domain::Alarm> alarms;
+    for (const auto& document : alarmsCollection_.find(filter.view(), options)) {
+        try {
+            alarms.push_back(mapAlarmDocument(document));
+        } catch (const std::exception&) {
+        }
+    }
+    return alarms;
 }
 
 void MongoAlarmRepository::create(const domain::Alarm& alarm) {

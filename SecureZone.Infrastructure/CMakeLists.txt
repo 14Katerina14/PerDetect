@@ -60,6 +60,24 @@ set_tests_properties(
 
 securezone_copy_mongodb_runtime(MongoAppUserMapperTests)
 securezone_set_mongodb_test_runtime(MongoAppUserMapperTests)
+
+add_executable(
+    MongoDomainMapperTests
+    tests/mongodb/MongoDomainMapperTests.cpp
+)
+target_link_libraries(
+    MongoDomainMapperTests
+    PRIVATE
+        SecureZone.Infrastructure
+)
+add_test(NAME MongoDomainMapperTests COMMAND MongoDomainMapperTests)
+set_tests_properties(
+    MongoDomainMapperTests
+    PROPERTIES
+        LABELS "mongodb;unit"
+)
+securezone_copy_mongodb_runtime(MongoDomainMapperTests)
+securezone_set_mongodb_test_runtime(MongoDomainMapperTests)
 endif()
 
 if(SECUREZONE_BUILD_MONGODB_INTEGRATION_TESTS)
