@@ -4,11 +4,11 @@ React Native / Expo presentation layer for the SecureZone mobile application.
 
 ## Visual screen coverage
 
-- shared: login, profile, loading, empty, offline, error and permission states;
-- scanner: camera/QR scanner preview, accepted/denied check-in results and scan history;
+- shared: splash, login, password recovery, profile, loading, empty, offline, error and permission states;
+- scanner: camera/QR scanner preview, accepted/denied check-in results, history and station settings;
 - worker: home, personal QR access card, zone list and zone details;
-- manager: dashboard, alarm list/details, operations overview and notification center;
-- admin: overview, identity administration and system configuration.
+- manager: dashboard, alarm list/details, operations, people, maintenance, machine details and notifications;
+- admin: overview, identity administration, employee details, system configuration and policy details.
 
 All employee records, QR patterns, alarms, metrics, filters, cameras, controls and navigation bars are
 static presentation fixtures. Authentication, API calls, camera access, QR token generation, secure

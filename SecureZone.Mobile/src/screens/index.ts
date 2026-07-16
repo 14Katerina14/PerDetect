@@ -1,4 +1,5 @@
 export { AlarmDetailsScreen } from './AlarmDetailsScreen';
+export { EmployeeDetailsScreen, ForgotPasswordScreen, MachineDetailsScreen, MaintenanceTasksScreen, PeopleOnSiteScreen, PolicyDetailsScreen, ScannerStationSettingsScreen, SplashScreen } from './AdditionalVisualScreens';
 export { CheckInResultScreen } from './CheckInResultScreen';
 export { IdentityAdministrationScreen } from './IdentityAdministrationScreen';
 export { LoginScreen } from './LoginScreen';
