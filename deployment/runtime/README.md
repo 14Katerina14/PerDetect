@@ -70,17 +70,39 @@ curl --fail --silent --show-error http://127.0.0.1:8080/health
 
 Replace `8080` if `SECUREZONE_API_HOST_PORT` is different.
 
+## Camera identity and access-decision flow
+
+The backend does not authorize a person from a zone-level presence record
+alone. The runtime flow is:
+
+1. XProtect sends a recent `Human` observation with `cameraId` and `objectId`.
+2. The QR scanner submits the employee, zone, scanner user, and the same
+   `cameraId`.
+3. The backend binds the employee to the latest unbound Human object from that
+   camera for the lifetime of the presence session.
+4. XProtect sends LineCrossing with the same `cameraId` and `objectId`.
+5. The backend evaluates employee roles, zone policy, machine state, and the
+   active identity binding, then returns `allowed` or `violation`.
+
+Do not omit `cameraId` from QR requests or `cameraId`/`objectId` from
+LineCrossing events. They are required identity evidence.
+
 ## Run the repeatable smoke test
 
-The smoke test uses the records seeded by
-`deployment/mongodb/init/01-init-securezone.js` and verifies:
+The smoke scripts create temporary, isolated records named `SMOKE-*` and use
+camera `CAM-SMOKE`. They do not modify the normal production/demo seed data.
+Each run verifies:
 
 1. `GET /health` returns `status: ok`.
-2. A unique XProtect LineCrossing event returns `decision: violation` before
-   QR presence exists.
-3. The seeded employee `EMP-001` is checked into `ZONE-001` by
-   `APP-SCANNER-001`, and the response is accepted.
-4. A second event with a different ID returns `decision: allowed`.
+2. An unknown camera object entering the smoke zone returns `violation`.
+3. The same object exiting returns `cleared`, so no test alarm remains active.
+4. A recent Human observation is accepted for `CAM-SMOKE`.
+5. QR check-in includes `cameraId`, binds `SMOKE-EMPLOYEE` to the observed
+   object, and returns a non-empty `bindingId`.
+6. LineCrossing for the bound `cameraId`/`objectId` returns `allowed` for the
+   isolated maintenance employee while the isolated machine is `stopped`.
+7. Temporary employees, scanner users, machines, zones, policies, sessions,
+   tracks, bindings, and alarms are removed.
 
 ```powershell
 ./scripts/smoke-test.ps1
@@ -90,8 +112,10 @@ The smoke test uses the records seeded by
 ./scripts/smoke-test.sh
 ```
 
-The scripts stop immediately on HTTP or JSON-field validation failures and do
-not print the API key.
+The Bash script uses an exit trap and the PowerShell script uses `try/finally`,
+so cleanup is attempted after both success and failure. The scripts stop on
+HTTP, MongoDB, or JSON validation errors and do not print the API key or the
+MongoDB password.
 
 ## Stop and preserve data
 
