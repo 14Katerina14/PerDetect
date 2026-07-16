@@ -13,7 +13,9 @@ const collections = [
   "webhook_targets",
   "webhook_deliveries",
   "camera_object_tracks",
-  "track_identity_bindings"
+  "track_identity_bindings",
+  "push_subscriptions",
+  "push_notification_deliveries"
 ];
 
 collections.forEach((collectionName) => {
@@ -89,6 +91,15 @@ securezone.webhook_deliveries.createIndex({ lastAttemptAt: -1 });
 
 securezone.webhook_targets.createIndex({ targetId: 1 }, { unique: true });
 securezone.webhook_targets.createIndex({ status: 1 });
+
+securezone.push_subscriptions.createIndex({ subscriptionId: 1 }, { unique: true });
+securezone.push_subscriptions.createIndex({ userId: 1, status: 1 });
+securezone.push_subscriptions.createIndex({ deviceToken: 1 }, { unique: true, sparse: true });
+
+securezone.push_notification_deliveries.createIndex({ deliveryId: 1 }, { unique: true });
+securezone.push_notification_deliveries.createIndex({ alarmId: 1 });
+securezone.push_notification_deliveries.createIndex({ recipientUserId: 1 });
+securezone.push_notification_deliveries.createIndex({ status: 1, nextAttemptAt: 1 });
 
 securezone.app_users.updateOne(
   { userId: "APP-SCANNER-001" },

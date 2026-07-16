@@ -5,6 +5,7 @@
 #include "securezone/infrastructure/mongodb/MongoDbSettingsProvider.h"
 #include "securezone/infrastructure/mongodb/MongoRepositoryProvider.h"
 #include "securezone/presence/PresenceSessionService.h"
+#include "securezone/notification/PushNotificationService.h"
 #include "securezone/identity/CameraIdentityService.h"
 #include "securezone/qr/QrCheckInService.h"
 #include "securezone/xprotect/XProtectLineCrossingService.h"
@@ -56,6 +57,8 @@ struct MongoApiRuntimeComposition::State {
           presenceSessions{repositoryProvider.presenceSessionRepository()},
           cameraObjectTracks{repositoryProvider.cameraObjectTrackRepository()},
           trackIdentityBindings{repositoryProvider.trackIdentityBindingRepository()},
+          pushSubscriptions{repositoryProvider.pushSubscriptionRepository()},
+          pushDeliveries{repositoryProvider.pushNotificationDeliveryRepository()},
           cameraIdentityService{cameraObjectTracks, trackIdentityBindings},
           presenceService{employees, appUsers, zones, qrCheckins, presenceSessions},
           qrService{
@@ -64,7 +67,19 @@ struct MongoApiRuntimeComposition::State {
               [] { return qr::QrCheckInService::Clock::now(); },
               this->config.apiRuntime.qrPresenceDuration
           },
-          policyAlarmService{employees, accessPolicies, machines, alarms},
+          pushNotificationService{pushSubscriptions, pushDeliveries},
+          policyAlarmService{
+              employees,
+              accessPolicies,
+              machines,
+              alarms,
+              [this](const domain::Alarm& alarm) {
+                  pushNotificationService.queueAlarmNotifications(
+                      alarm,
+                      std::chrono::system_clock::now()
+                  );
+              }
+          },
           xprotectService{
               [this](const xprotect::XProtectLineCrossingCommand& command) {
                   return resolveXProtectZone(command);
@@ -114,9 +129,12 @@ struct MongoApiRuntimeComposition::State {
     infrastructure::mongodb::repositories::MongoPresenceSessionRepository presenceSessions;
     infrastructure::mongodb::repositories::MongoCameraObjectTrackRepository cameraObjectTracks;
     infrastructure::mongodb::repositories::MongoTrackIdentityBindingRepository trackIdentityBindings;
+    infrastructure::mongodb::repositories::MongoPushSubscriptionRepository pushSubscriptions;
+    infrastructure::mongodb::repositories::MongoPushNotificationDeliveryRepository pushDeliveries;
     identity::CameraIdentityService cameraIdentityService;
     presence::PresenceSessionService presenceService;
     qr::QrCheckInService qrService;
+    notification::PushNotificationService pushNotificationService;
     xprotect::XProtectPolicyAlarmService policyAlarmService;
     xprotect::XProtectLineCrossingService xprotectService;
 };

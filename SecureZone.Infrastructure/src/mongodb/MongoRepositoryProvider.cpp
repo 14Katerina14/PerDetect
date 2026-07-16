@@ -15,6 +15,8 @@ constexpr const char* WebhookTargetsCollection = "webhook_targets";
 constexpr const char* ZonesCollection = "zones";
 constexpr const char* CameraObjectTracksCollection = "camera_object_tracks";
 constexpr const char* TrackIdentityBindingsCollection = "track_identity_bindings";
+constexpr const char* PushSubscriptionsCollection = "push_subscriptions";
+constexpr const char* PushNotificationDeliveriesCollection = "push_notification_deliveries";
 
 }
 
@@ -82,6 +84,20 @@ repositories::MongoCameraObjectTrackRepository MongoRepositoryProvider::cameraOb
 
 repositories::MongoTrackIdentityBindingRepository MongoRepositoryProvider::trackIdentityBindingRepository() {
     return repositories::MongoTrackIdentityBindingRepository{client_.database()[TrackIdentityBindingsCollection]};
+}
+
+repositories::MongoPushSubscriptionRepository MongoRepositoryProvider::pushSubscriptionRepository() {
+    return repositories::MongoPushSubscriptionRepository{
+        client_.database()[AppUsersCollection],
+        client_.database()[PushSubscriptionsCollection]
+    };
+}
+
+repositories::MongoPushNotificationDeliveryRepository
+MongoRepositoryProvider::pushNotificationDeliveryRepository() {
+    return repositories::MongoPushNotificationDeliveryRepository{
+        client_.database()[PushNotificationDeliveriesCollection]
+    };
 }
 
 }
