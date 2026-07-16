@@ -45,6 +45,12 @@ ApiSettings loadApiSettingsFromEnvironment() {
     settings.jwtTtl = std::chrono::minutes{
         envInt("SECUREZONE_JWT_TTL_MINUTES", static_cast<int>(settings.jwtTtl.count()))
     };
+    settings.unidentifiedIdentityGracePeriod = std::chrono::seconds{
+        envInt(
+            "SECUREZONE_UNIDENTIFIED_GRACE_SECONDS",
+            static_cast<int>(settings.unidentifiedIdentityGracePeriod.count())
+        )
+    };
     validateProductionApiSettings(settings);
     return settings;
 }

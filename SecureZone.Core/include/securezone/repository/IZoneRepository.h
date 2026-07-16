@@ -26,6 +26,13 @@ public:
         return std::nullopt;
     }
 
+    virtual std::optional<domain::Zone> findActiveSafeByCameraId(
+        const std::string& cameraId
+    ) const {
+        (void)cameraId;
+        return std::nullopt;
+    }
+
     virtual bool save(const domain::Zone& zone) = 0;
 };
 

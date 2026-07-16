@@ -12,6 +12,11 @@ Human appears in the camera field of view
   -> plugin POST /api/xprotect/object-observations
   -> scanner phone POST /api/qr/check-in with the same cameraId
   -> backend binds the employee to the newest unbound Human ObjectId
+  -> while visible, plugin sends a Human heartbeat every 5 seconds
+  -> after 2 minutes without a QR binding, backend creates one unidentified-person alarm
+  -> plugin raises SecureZoneViolationConfirmed and XProtect activates the speaker
+  -> when the object disappears, plugin sends status=lost
+  -> backend resolves the alarm and plugin raises SecureZoneViolationCleared
 WiseAI LineCrossing for that object
   -> XProtect Event Server
   -> plugin correlates the XProtect event with raw metadata ObjectId
@@ -62,6 +67,12 @@ to `POST /api/xprotect/object-observations`. The MIP SDK related camera item is
 used as `cameraId`. The scanner app must send that camera GUID in its QR
 check-in request. The default QR matching window is 15 seconds, so the employee
 should scan immediately after entering the camera field of view.
+
+Active observations include `"status":"active"`; after the object has not
+appeared in metadata frames for the configured lost timeout, the plugin sends
+`"status":"lost"`. The backend environment variable
+`SECUREZONE_UNIDENTIFIED_GRACE_SECONDS` defaults to `120`. The installer sets
+the plug-in heartbeat and lost timeout to 5 and 8 seconds respectively.
 
 It optionally sends `X-SecureZone-Api-Key` when
 `SECUREZONE_XPROTECT_API_KEY` is configured.

@@ -56,6 +56,7 @@ The image starts `/app/SecureZone.Api` and accepts these environment variables:
 | `SECUREZONE_QR_PRESENCE_MINUTES` | `2` | QR presence validity duration |
 | `SECUREZONE_JWT_SECRET` | none | HS256 signing secret; required and at least 32 bytes |
 | `SECUREZONE_JWT_TTL_MINUTES` | `60` | Mobile access-token lifetime |
+| `SECUREZONE_UNIDENTIFIED_GRACE_SECONDS` | `120` | Time allowed to bind a visible Human object to a QR identity |
 
 Secrets are runtime environment values. They are not copied into the image.
 

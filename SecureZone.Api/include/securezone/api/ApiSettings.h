@@ -14,6 +14,7 @@ struct ApiSettings {
     std::chrono::minutes qrPresenceDuration{2};
     std::string jwtSecret;
     std::chrono::minutes jwtTtl{60};
+    std::chrono::seconds unidentifiedIdentityGracePeriod{120};
 };
 
 void validateProductionApiSettings(const ApiSettings& settings);

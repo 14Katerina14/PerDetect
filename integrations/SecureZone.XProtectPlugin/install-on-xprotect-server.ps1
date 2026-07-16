@@ -3,7 +3,11 @@ param(
     [string]$ApiUrl = "http://127.0.0.1:8080/api/xprotect/line-crossing",
     [string]$ApiKey = "",
     [ValidateRange(1, 60)]
-    [int]$TimeoutSeconds = 5
+    [int]$TimeoutSeconds = 5,
+    [ValidateRange(1, 60)]
+    [int]$MetadataHeartbeatSeconds = 5,
+    [ValidateRange(2, 120)]
+    [int]$MetadataLostAfterSeconds = 8
 )
 
 $ErrorActionPreference = "Stop"
@@ -35,6 +39,8 @@ Unblock-File -LiteralPath (Join-Path $PluginFolder "plugin.def") -ErrorAction Si
 
 [Environment]::SetEnvironmentVariable("SECUREZONE_API_URL", $ApiUrl, "Machine")
 [Environment]::SetEnvironmentVariable("SECUREZONE_API_TIMEOUT_SECONDS", $TimeoutSeconds.ToString(), "Machine")
+[Environment]::SetEnvironmentVariable("SECUREZONE_METADATA_HEARTBEAT_SECONDS", $MetadataHeartbeatSeconds.ToString(), "Machine")
+[Environment]::SetEnvironmentVariable("SECUREZONE_METADATA_LOST_AFTER_SECONDS", $MetadataLostAfterSeconds.ToString(), "Machine")
 
 if (-not [string]::IsNullOrWhiteSpace($ApiKey)) {
     [Environment]::SetEnvironmentVariable("SECUREZONE_XPROTECT_API_KEY", $ApiKey, "Machine")
