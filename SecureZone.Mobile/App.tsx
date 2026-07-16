@@ -10,11 +10,11 @@ import { ScannerScreen } from './src/screens/ScannerScreen';
 import { colors } from './src/theme/tokens';
 
 function RoleRoot() {
-  const { session, restoring, login, logout } = useAuth();
+  const { session, restoring, preferredServerUrl, rememberServerUrl, login, logout } = useAuth();
   if (restoring) {
     return <View style={styles.loading}><ActivityIndicator color={colors.primary} size="large" /></View>;
   }
-  if (!session) return <LoginScreen onLogin={login} />;
+  if (!session) return <LoginScreen defaultServerUrl={preferredServerUrl} onLogin={login} onServerVerified={rememberServerUrl} />;
 
   const screen = screenForRole(session.user.role);
   if (screen === 'scanner') return <ScannerScreen session={session} onLogout={logout} />;

@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, AppState, Pressable, RefreshControl, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { api, ApiError } from '../api/client';
 import type { Alarm, AuthSession } from '../api/types';
+import { nextPollDelay } from '../network/resilience';
 import { colors } from '../theme/tokens';
-
-const POLL_INTERVAL_MS = 3_000;
 
 interface Props {
   session: AuthSession;
@@ -18,8 +17,9 @@ export function AlarmScreen({ session, onLogout }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const failureCount = useRef(0);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (): Promise<boolean> => {
     try {
       const [activeResponse, recentResponse] = await Promise.all([
         api.activeAlarms(session.serverUrl, session.accessToken),
@@ -29,21 +29,44 @@ export function AlarmScreen({ session, onLogout }: Props) {
       setRecent(recentResponse.alarms);
       setLastUpdated(new Date());
       setError('');
+      failureCount.current = 0;
+      return true;
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 401) {
         await onLogout();
-        return;
+        return false;
       }
       setError(reason instanceof Error ? reason.message : 'Could not load alarms.');
+      failureCount.current += 1;
+      return false;
     } finally {
       setLoading(false);
     }
   }, [onLogout, session.accessToken, session.serverUrl]);
 
   useEffect(() => {
-    void refresh();
-    const interval = setInterval(() => void refresh(), POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
+    let cancelled = false;
+    let running = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = async () => {
+      if (cancelled || running) return;
+      running = true;
+      await refresh();
+      running = false;
+      if (!cancelled) timer = setTimeout(() => void schedule(), nextPollDelay(failureCount.current));
+    };
+    void schedule();
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        if (timer) clearTimeout(timer);
+        void schedule();
+      }
+    });
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+      subscription.remove();
+    };
   }, [refresh]);
 
   return (
@@ -58,9 +81,9 @@ export function AlarmScreen({ session, onLogout }: Props) {
       >
         <View style={styles.summary}>
           <View><Text style={styles.summaryNumber}>{active.length}</Text><Text style={styles.summaryLabel}>ACTIVE NOW</Text></View>
-          <View style={styles.live}><View style={styles.liveDot} /><Text style={styles.liveText}>Updates every 3 seconds</Text></View>
+          <View style={styles.live}><View style={[styles.liveDot, error ? styles.offlineDot : null]} /><Text style={styles.liveText}>{error ? 'OFFLINE - showing last data' : 'LIVE'}</Text></View>
         </View>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={styles.error}>{error} Retrying automatically.</Text> : null}
         {loading && !lastUpdated ? <ActivityIndicator color={colors.primary} size="large" /> : null}
 
         <Text style={styles.section}>Active alarms</Text>
@@ -105,6 +128,7 @@ const styles = StyleSheet.create({
   summaryLabel: { color: '#B8C5D3', fontSize: 9, fontWeight: '800' },
   live: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success },
+  offlineDot: { backgroundColor: colors.warning },
   liveText: { color: colors.surface, fontSize: 11 },
   section: { marginTop: 10, color: colors.text, fontSize: 16, fontWeight: '800' },
   alarm: { padding: 15, borderWidth: 1, borderRadius: 8, backgroundColor: colors.surface },

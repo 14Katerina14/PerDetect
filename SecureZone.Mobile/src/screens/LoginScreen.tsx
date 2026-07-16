@@ -12,22 +12,46 @@ import {
   View,
 } from 'react-native';
 
-import { ApiError } from '../api/client';
-import { DEFAULT_SERVER_URL } from '../auth/AuthContext';
+import { api, ApiError, normalizeServerUrl } from '../api/client';
 import { BrandMark } from '../components/BrandMark';
 import { LockIcon, UserIcon } from '../components/FieldIcons';
 import { colors } from '../theme/tokens';
 
 interface Props {
+  defaultServerUrl: string;
   onLogin(serverUrl: string, username: string, password: string): Promise<void>;
+  onServerVerified(serverUrl: string): Promise<void>;
 }
 
-export function LoginScreen({ onLogin }: Props) {
-  const [serverUrl, setServerUrl] = useState(DEFAULT_SERVER_URL);
+export function LoginScreen({ defaultServerUrl, onLogin, onServerVerified }: Props) {
+  const [serverUrl, setServerUrl] = useState(defaultServerUrl);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [checking, setChecking] = useState(false);
+  const [serverStatus, setServerStatus] = useState('');
+
+  const checkConnection = async () => {
+    setChecking(true);
+    setError('');
+    setServerStatus('');
+    try {
+      const normalizedUrl = normalizeServerUrl(serverUrl);
+      await api.health(normalizedUrl);
+      await onServerVerified(normalizedUrl);
+      try {
+        const version = await api.version(normalizedUrl);
+        setServerStatus(`Connected to ${version.service} ${version.version} (build ${version.buildId}).`);
+      } catch {
+        setServerStatus('Server is reachable, but /version is unavailable. The backend image may be outdated.');
+      }
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Cannot reach the SecureZone server.');
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const submit = async () => {
     if (!serverUrl.trim() || !username.trim() || !password) {
@@ -67,6 +91,15 @@ export function LoginScreen({ onLogin }: Props) {
               style={styles.plainInput}
               value={serverUrl}
             />
+            <View style={styles.serverActions}>
+              <Pressable disabled={checking} onPress={() => void checkConnection()} style={styles.testButton}>
+                {checking ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.testText}>Test server</Text>}
+              </Pressable>
+              <Pressable onPress={() => setServerUrl('http://192.168.137.1:18080')} style={styles.hotspotButton}>
+                <Text style={styles.hotspotText}>Use demo hotspot</Text>
+              </Pressable>
+            </View>
+            {serverStatus ? <Text style={styles.serverStatus}>{serverStatus}</Text> : null}
 
             <Text style={styles.label}>Username</Text>
             <View style={styles.inputShell}>
@@ -123,4 +156,10 @@ const styles = StyleSheet.create({
   signInButton: { height: 52, alignItems: 'center', justifyContent: 'center', marginTop: 8, borderRadius: 8, backgroundColor: colors.primary },
   signInText: { color: colors.surface, fontSize: 16, fontWeight: '700' },
   hint: { marginTop: 8, color: colors.textMuted, fontSize: 11, lineHeight: 16 },
+  serverActions: { flexDirection: 'row', gap: 8 },
+  testButton: { minHeight: 40, flex: 1, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.primary, borderRadius: 6, backgroundColor: colors.primarySoft },
+  testText: { color: colors.primary, fontWeight: '800' },
+  hotspotButton: { minHeight: 40, flex: 1, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border, borderRadius: 6, backgroundColor: colors.surface },
+  hotspotText: { color: colors.text, fontSize: 11, fontWeight: '700' },
+  serverStatus: { padding: 10, borderRadius: 6, color: colors.success, backgroundColor: colors.successSoft, fontSize: 12 },
 });

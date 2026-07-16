@@ -1,4 +1,4 @@
-import type { AlarmListResponse, LoginResponse, QrCheckInResponse } from './types';
+import type { AlarmListResponse, LoginResponse, QrCheckInResponse, ServerVersion } from './types';
 
 const REQUEST_TIMEOUT_MS = 8_000;
 
@@ -76,6 +76,10 @@ export const api = {
     return request(serverUrl, '/health');
   },
 
+  version(serverUrl: string): Promise<ServerVersion> {
+    return request(serverUrl, '/version');
+  },
+
   login(serverUrl: string, username: string, password: string): Promise<LoginResponse> {
     return request(serverUrl, '/api/auth/login', {
       method: 'POST',
@@ -89,13 +93,14 @@ export const api = {
     employeeId: string,
     zoneId: string,
     cameraId: string,
+    requestId: string,
   ): Promise<QrCheckInResponse> {
     return request(
       serverUrl,
       '/api/qr/check-in',
       {
         method: 'POST',
-        body: JSON.stringify({ employeeId, zoneId, cameraId }),
+        body: JSON.stringify({ employeeId, zoneId, cameraId, requestId }),
       },
       accessToken,
     );

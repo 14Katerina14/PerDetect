@@ -19,6 +19,12 @@ export interface AuthSession extends LoginResponse {
   expiresAt: number;
 }
 
+export interface ServerVersion {
+  service: string;
+  version: string;
+  buildId: string;
+}
+
 export interface QrCheckInResponse {
   accepted: boolean;
   status: string;

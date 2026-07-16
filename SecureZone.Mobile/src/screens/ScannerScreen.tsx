@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Pressable,
   SafeAreaView,
   ScrollView,
@@ -14,7 +15,8 @@ import {
 
 import { api, ApiError } from '../api/client';
 import type { AuthSession, QrCheckInResponse } from '../api/types';
-import { parseEmployeeQrPayload } from '../qr/payload';
+import { canRetryQrRequest, createRequestId, isQrRetryFresh } from '../network/resilience';
+import { parseEmployeeQrPayload, type EmployeeQrPayload } from '../qr/payload';
 import { colors } from '../theme/tokens';
 
 const STATION_KEY = 'securezone.scanner.station.v1';
@@ -29,6 +31,14 @@ interface StationConfig {
   cameraId: string;
 }
 
+interface PendingCheckIn {
+  payload: EmployeeQrPayload;
+  requestId: string;
+  createdAt: number;
+  zoneId: string;
+  cameraId: string;
+}
+
 export function ScannerScreen({ session, onLogout }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const [zoneId, setZoneId] = useState(process.env.EXPO_PUBLIC_SECUREZONE_ZONE_ID ?? 'ZONE-001');
@@ -36,6 +46,7 @@ export function ScannerScreen({ session, onLogout }: Props) {
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState<QrCheckInResponse | null>(null);
   const [error, setError] = useState('');
+  const [pendingCheckIn, setPendingCheckIn] = useState<PendingCheckIn | null>(null);
   const scanLocked = useRef(false);
 
   useEffect(() => {
@@ -51,36 +62,69 @@ export function ScannerScreen({ session, onLogout }: Props) {
     });
   }, []);
 
-  const handleScan = async ({ data }: BarcodeScanningResult) => {
-    if (scanLocked.current) return;
-    scanLocked.current = true;
+  const submitCheckIn = async (pending: PendingCheckIn) => {
     setProcessing(true);
     setError('');
     setResult(null);
     try {
-      if (!zoneId.trim() || !cameraId.trim()) throw new Error('Configure the XProtect zone and camera IDs first.');
-      const payload = parseEmployeeQrPayload(data);
-      await SecureStore.setItemAsync(STATION_KEY, JSON.stringify({ zoneId: zoneId.trim(), cameraId: cameraId.trim() }));
       const response = await api.checkIn(
         session.serverUrl,
         session.accessToken,
-        payload.employeeId,
-        zoneId.trim(),
-        cameraId.trim(),
+        pending.payload.employeeId,
+        pending.zoneId,
+        pending.cameraId,
+        pending.requestId,
       );
       setResult(response);
+      setPendingCheckIn(null);
     } catch (reason) {
       if (reason instanceof ApiError && reason.status === 401) {
         await onLogout();
       } else if (reason instanceof ApiError && reason.status === 409) {
+        setPendingCheckIn(null);
         setError('No recently detected person is available for this camera. Enter the camera view and scan again.');
+      } else if (canRetryQrRequest(reason)) {
+        setPendingCheckIn(pending);
+        setError('Connection was interrupted. The scan was not confirmed. Retry within 30 seconds or scan again.');
       } else {
+        setPendingCheckIn(null);
         setError(reason instanceof Error ? reason.message : 'QR check-in failed.');
       }
     } finally {
       setProcessing(false);
+    }
+  };
+
+  const handleScan = async ({ data }: BarcodeScanningResult) => {
+    if (scanLocked.current || pendingCheckIn) return;
+    scanLocked.current = true;
+    try {
+      if (!zoneId.trim() || !cameraId.trim()) throw new Error('Configure the XProtect zone and camera IDs first.');
+      const payload = parseEmployeeQrPayload(data);
+      const pending = {
+        payload,
+        requestId: createRequestId(),
+        createdAt: Date.now(),
+        zoneId: zoneId.trim(),
+        cameraId: cameraId.trim(),
+      };
+      await SecureStore.setItemAsync(STATION_KEY, JSON.stringify({ zoneId: pending.zoneId, cameraId: pending.cameraId }));
+      await submitCheckIn(pending);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'QR check-in failed.');
+    } finally {
       setTimeout(() => { scanLocked.current = false; }, 2_000);
     }
+  };
+
+  const retryPending = async () => {
+    if (!pendingCheckIn) return;
+    if (!isQrRetryFresh(pendingCheckIn.createdAt)) {
+      setPendingCheckIn(null);
+      setError('The safe retry window expired. Ask the worker to remain visible and scan the QR code again.');
+      return;
+    }
+    await submitCheckIn(pendingCheckIn);
   };
 
   return (
@@ -100,14 +144,19 @@ export function ScannerScreen({ session, onLogout }: Props) {
             <View style={styles.permissionCard}>
               <Text style={styles.cardTitle}>Camera permission required</Text>
               <Text style={styles.body}>The scanner account needs camera access to read employee QR codes.</Text>
-              <Pressable onPress={() => void requestPermission()} style={styles.primaryButton}><Text style={styles.primaryText}>Allow camera</Text></Pressable>
+              <Pressable
+                onPress={() => void (permission.canAskAgain ? requestPermission() : Linking.openSettings())}
+                style={styles.primaryButton}
+              >
+                <Text style={styles.primaryText}>{permission.canAskAgain ? 'Allow camera' : 'Open phone settings'}</Text>
+              </Pressable>
             </View>
           ) : (
             <View style={styles.cameraShell}>
               <CameraView
                 barcodeScannerSettings={{ barcodeTypes: ['qr'] }}
                 facing="back"
-                onBarcodeScanned={processing ? undefined : (scan) => void handleScan(scan)}
+                onBarcodeScanned={processing || pendingCheckIn ? undefined : (scan) => void handleScan(scan)}
                 style={StyleSheet.absoluteFill}
               />
               <View pointerEvents="none" style={styles.scanFrame} />
@@ -124,6 +173,12 @@ export function ScannerScreen({ session, onLogout }: Props) {
           </View>
         ) : null}
         {error ? <View style={[styles.status, styles.failure]}><Text style={styles.statusTitle}>Check-in failed</Text><Text style={styles.statusText}>{error}</Text></View> : null}
+        {pendingCheckIn ? (
+          <View style={styles.retryActions}>
+            <Pressable disabled={processing} onPress={() => void retryPending()} style={styles.primaryButton}><Text style={styles.primaryText}>Retry now</Text></Pressable>
+            <Pressable disabled={processing} onPress={() => { setPendingCheckIn(null); setError(''); }} style={styles.secondaryButton}><Text style={styles.secondaryText}>Discard and scan again</Text></Pressable>
+          </View>
+        ) : null}
       </ScrollView>
     </SafeAreaView>
   );
@@ -155,4 +210,7 @@ const styles = StyleSheet.create({
   statusTitle: { color: colors.text, fontSize: 16, fontWeight: '800' },
   statusText: { color: colors.textMuted, textAlign: 'center' },
   meta: { color: colors.textMuted, fontSize: 11 },
+  retryActions: { flexDirection: 'row', gap: 10 },
+  secondaryButton: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 14, paddingVertical: 13, borderWidth: 1, borderColor: colors.border, borderRadius: 7, backgroundColor: colors.surface },
+  secondaryText: { color: colors.text, fontSize: 12, fontWeight: '700' },
 });

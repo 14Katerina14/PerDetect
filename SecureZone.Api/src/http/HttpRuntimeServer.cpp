@@ -46,13 +46,13 @@ std::string utcTimestamp() {
     return value.str();
 }
 
-std::string eventIdFrom(const httplib::Request& request) {
+std::string bodyIdFrom(const httplib::Request& request, const char* field) {
     if (request.body.empty()) return "-";
     const auto payload = nlohmann::json::parse(request.body, nullptr, false);
     if (payload.is_object()) {
-        const auto eventId = payload.find("eventId");
-        if (eventId != payload.end() && eventId->is_string() && !eventId->get_ref<const std::string&>().empty()) {
-            return eventId->get<std::string>();
+        const auto value = payload.find(field);
+        if (value != payload.end() && value->is_string() && !value->get_ref<const std::string&>().empty()) {
+            return value->get<std::string>();
         }
     }
     return "-";
@@ -75,7 +75,8 @@ void logRequest(
          << " status=" << status
          << " durationMs=" << duration
          << " remote=" << (request.remote_addr.empty() ? "-" : request.remote_addr)
-         << " eventId=" << eventIdFrom(request);
+         << " eventId=" << bodyIdFrom(request, "eventId")
+         << " requestId=" << bodyIdFrom(request, "requestId");
 
     std::lock_guard<std::mutex> lock{logMutex};
     std::clog << line.str() << std::endl;

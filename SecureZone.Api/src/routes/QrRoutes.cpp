@@ -5,11 +5,30 @@
 #include <nlohmann/json.hpp>
 
 #include <sstream>
+#include <chrono>
+#include <mutex>
 #include <string>
+#include <unordered_map>
 #include <utility>
 
 namespace securezone::api {
 namespace {
+
+struct CachedQrResponse {
+    HttpResponse response;
+    std::chrono::steady_clock::time_point expiresAt;
+};
+
+std::mutex qrIdempotencyMutex;
+std::unordered_map<std::string, CachedQrResponse> qrIdempotencyCache;
+constexpr auto QrIdempotencyTtl = std::chrono::minutes{2};
+
+void removeExpiredQrResponses(std::chrono::steady_clock::time_point now) {
+    for (auto iterator = qrIdempotencyCache.begin(); iterator != qrIdempotencyCache.end();) {
+        if (iterator->second.expiresAt <= now) iterator = qrIdempotencyCache.erase(iterator);
+        else ++iterator;
+    }
+}
 
 std::string jsonEscape(const std::string& value) {
     std::string escaped;
@@ -111,13 +130,32 @@ HttpResponse QrRoutes::handleCheckIn(const HttpRequest& request) const {
             : std::string{};
     };
 
+    const auto requestId = stringField("requestId");
+    if (requestId.size() > 128) {
+        return jsonResponse(400, R"({"accepted":false,"status":"invalid_request","message":"requestId is too long."})");
+    }
+
     qr::QrCheckInCommand command{};
     command.employeeId = stringField("employeeId");
     command.zoneId = stringField("zoneId");
     command.cameraId = stringField("cameraId");
     command.scannedByUserId = authorization.principal->userId;
 
-    return qrResultResponse(checkInHandler_(command));
+    if (requestId.empty()) {
+        return qrResultResponse(checkInHandler_(command));
+    }
+
+    const auto cacheKey = authorization.principal->userId + ":" + requestId;
+    const auto now = std::chrono::steady_clock::now();
+    std::lock_guard<std::mutex> lock{qrIdempotencyMutex};
+    removeExpiredQrResponses(now);
+    if (const auto cached = qrIdempotencyCache.find(cacheKey); cached != qrIdempotencyCache.end()) {
+        return cached->second.response;
+    }
+
+    auto response = qrResultResponse(checkInHandler_(command));
+    qrIdempotencyCache.insert_or_assign(cacheKey, CachedQrResponse{response, now + QrIdempotencyTtl});
+    return response;
 }
 
 }

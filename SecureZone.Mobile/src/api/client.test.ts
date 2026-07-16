@@ -41,11 +41,21 @@ describe('SecureZone API client', () => {
     }), { status: 201 }));
     vi.stubGlobal('fetch', fetchMock);
 
-    await api.checkIn('http://MYIP:18080', 'scanner-jwt', 'EMP-001', 'ZONE-001', 'CAM-001');
+    await api.checkIn('http://MYIP:18080', 'scanner-jwt', 'EMP-001', 'ZONE-001', 'CAM-001', 'request-1');
 
     const options = fetchMock.mock.calls[0][1] as RequestInit;
     expect(options.headers).toMatchObject({ Authorization: 'Bearer scanner-jwt' });
-    expect(options.body).toBe(JSON.stringify({ employeeId: 'EMP-001', zoneId: 'ZONE-001', cameraId: 'CAM-001' }));
+    expect(options.body).toBe(JSON.stringify({ employeeId: 'EMP-001', zoneId: 'ZONE-001', cameraId: 'CAM-001', requestId: 'request-1' }));
+  });
+
+  it('checks health and identifies the exact backend build', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response('{"status":"ok"}', { status: 200 }))
+      .mockResolvedValueOnce(new Response('{"service":"securezone-api","version":"0.1.0","buildId":"demo"}', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await api.health('http://MYIP:18080');
+    await expect(api.version('http://MYIP:18080')).resolves.toMatchObject({ buildId: 'demo' });
   });
 
   it('surfaces backend authorization failures', async () => {

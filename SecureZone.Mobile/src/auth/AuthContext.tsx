@@ -5,11 +5,14 @@ import { api, normalizeServerUrl } from '../api/client';
 import type { AuthSession } from '../api/types';
 
 const SESSION_KEY = 'securezone.auth.session.v1';
+const SERVER_URL_KEY = 'securezone.server.url.v1';
 const DEFAULT_SERVER_URL = process.env.EXPO_PUBLIC_SECUREZONE_API_URL ?? 'http://10.0.2.2:18080';
 
 interface AuthContextValue {
   session: AuthSession | null;
   restoring: boolean;
+  preferredServerUrl: string;
+  rememberServerUrl(serverUrl: string): Promise<void>;
   login(serverUrl: string, username: string, password: string): Promise<void>;
   logout(): Promise<void>;
 }
@@ -19,11 +22,16 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<AuthSession | null>(null);
   const [restoring, setRestoring] = useState(true);
+  const [preferredServerUrl, setPreferredServerUrl] = useState(DEFAULT_SERVER_URL);
 
   useEffect(() => {
     void (async () => {
       try {
-        const stored = await SecureStore.getItemAsync(SESSION_KEY);
+        const [stored, storedServerUrl] = await Promise.all([
+          SecureStore.getItemAsync(SESSION_KEY),
+          SecureStore.getItemAsync(SERVER_URL_KEY),
+        ]);
+        if (storedServerUrl) setPreferredServerUrl(storedServerUrl);
         if (!stored) return;
         const restored = JSON.parse(stored) as AuthSession;
         if (restored.expiresAt <= Date.now() || !restored.accessToken || !restored.user) {
@@ -47,7 +55,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       serverUrl: normalizedUrl,
       expiresAt: Date.now() + response.expiresIn * 1_000,
     };
-    await SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(nextSession));
+    await Promise.all([
+      SecureStore.setItemAsync(SESSION_KEY, JSON.stringify(nextSession)),
+      SecureStore.setItemAsync(SERVER_URL_KEY, normalizedUrl),
+    ]);
+    setPreferredServerUrl(normalizedUrl);
     setSession(nextSession);
   }, []);
 
@@ -56,7 +68,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   }, []);
 
-  const value = useMemo(() => ({ session, restoring, login, logout }), [session, restoring, login, logout]);
+  const rememberServerUrl = useCallback(async (serverUrl: string) => {
+    const normalizedUrl = normalizeServerUrl(serverUrl);
+    await SecureStore.setItemAsync(SERVER_URL_KEY, normalizedUrl);
+    setPreferredServerUrl(normalizedUrl);
+  }, []);
+
+  const value = useMemo(
+    () => ({ session, restoring, preferredServerUrl, rememberServerUrl, login, logout }),
+    [session, restoring, preferredServerUrl, rememberServerUrl, login, logout],
+  );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
