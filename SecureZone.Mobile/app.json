@@ -23,6 +23,7 @@
       }
     },
     "plugins": [
+      "./plugins/withCleartextTraffic",
       "expo-secure-store",
       [
         "expo-camera",
