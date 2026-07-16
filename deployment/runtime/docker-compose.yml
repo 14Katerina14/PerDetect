@@ -37,6 +37,8 @@ services:
     build:
       context: ../..
       dockerfile: deployment/backend/Dockerfile
+      args:
+        SECUREZONE_BUILD_ID: ${SECUREZONE_BUILD_ID:-local}
     depends_on:
       mongodb:
         condition: service_healthy

@@ -12,6 +12,7 @@ namespace securezone::api {
 struct ApiApplicationInfo {
     std::string serviceName{"securezone-api"};
     std::string version{"0.1.0"};
+    std::string buildId{"local"};
 };
 
 class ApiApplication {
@@ -41,5 +42,6 @@ private:
 };
 
 ApiApplication createApiApplicationFromEnvironment();
+ApiApplicationInfo loadApiApplicationInfoFromEnvironment();
 
 }

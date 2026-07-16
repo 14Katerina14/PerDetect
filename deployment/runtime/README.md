@@ -72,6 +72,19 @@ curl --fail --silent --show-error http://127.0.0.1:18080/health
 
 Replace `18080` if `SECUREZONE_API_HOST_PORT` is different.
 
+Confirm which backend image is running with:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:18080/version
+docker compose logs --follow securezone-api
+```
+
+Set `SECUREZONE_BUILD_ID` in `.env` to the short Git commit or another release
+identifier before building the image. API access logs include method, path,
+status, duration, remote address, and `eventId` when the request contains one.
+Request bodies, authorization headers, passwords, JWTs, and API keys are not
+logged.
+
 ## Camera identity and access-decision flow
 
 The backend does not authorize a person from a zone-level presence record
