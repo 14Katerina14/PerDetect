@@ -12,6 +12,7 @@ HttpRequest toApiRequest(const httplib::Request& request) {
     result.method = request.method;
     result.path = request.path;
     result.body = request.body;
+    result.remoteAddress = request.remote_addr;
 
     for (const auto& header : request.headers) {
         result.headers.emplace(header.first, header.second);

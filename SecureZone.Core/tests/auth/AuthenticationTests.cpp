@@ -40,7 +40,10 @@ public:
 
 class PasswordVerifier final : public auth::IPasswordVerifier {
 public:
+    mutable int verificationCount{0};
+
     bool verify(std::string_view password, std::string_view hash) const override {
+        ++verificationCount;
         return password == "correct-password" && hash == "valid-test-hash";
     }
 };
@@ -79,7 +82,8 @@ auth::AuthenticationService serviceFor(
     const PasswordVerifier& passwords,
     const AccessTokens& tokens
 ) {
-    return {users, passwords, tokens, [] { return auth::IAccessTokenService::Clock::time_point{}; }};
+    return {users, passwords, tokens, "dummy-test-hash",
+        [] { return auth::IAccessTokenService::Clock::time_point{}; }};
 }
 
 void scannerLoginSucceedsWithoutEmployeeLink() {
@@ -117,6 +121,7 @@ void invalidCredentialsAreIndistinguishable() {
     const auto service = serviceFor(users, passwords, tokens);
 
     const auto unknown = service.login({"unknown", "correct-password"});
+    assert(passwords.verificationCount == 1);
     const auto wrong = service.login({"inactive", "wrong-password"});
     const auto inactive = service.login({"inactive", "correct-password"});
     const auto missingHash = service.login({"missing-hash", "correct-password"});

@@ -65,14 +65,17 @@ struct MongoApiRuntimeComposition::State {
           pushSubscriptions{repositoryProvider.pushSubscriptionRepository()},
           pushDeliveries{repositoryProvider.pushNotificationDeliveryRepository()},
           passwordVerifier{},
+          dummyPasswordHash{infrastructure::auth::hashPasswordArgon2id(
+              "securezone-dummy-password-verification-only"
+          )},
           accessTokens{{
               this->config.apiRuntime.apiSettings.jwtSecret,
               this->config.apiRuntime.apiSettings.jwtTtl,
               "securezone",
               "securezone-mobile"
           }},
-          authenticationService{appUsers, passwordVerifier, accessTokens},
-          endpointAuthorizer{accessTokens},
+          authenticationService{appUsers, passwordVerifier, accessTokens, dummyPasswordHash},
+          endpointAuthorizer{accessTokens, appUsers},
           cameraIdentityService{cameraObjectTracks, trackIdentityBindings},
           presenceService{employees, appUsers, zones, qrCheckins, presenceSessions},
           qrService{
@@ -159,6 +162,7 @@ struct MongoApiRuntimeComposition::State {
     infrastructure::mongodb::repositories::MongoPushSubscriptionRepository pushSubscriptions;
     infrastructure::mongodb::repositories::MongoPushNotificationDeliveryRepository pushDeliveries;
     infrastructure::auth::SodiumPasswordVerifier passwordVerifier;
+    std::string dummyPasswordHash;
     infrastructure::auth::JwtAccessTokenService accessTokens;
     auth::AuthenticationService authenticationService;
     EndpointAuthorizer endpointAuthorizer;

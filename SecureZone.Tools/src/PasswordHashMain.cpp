@@ -1,4 +1,5 @@
 #include "securezone/infrastructure/auth/SodiumPasswordVerifier.h"
+#include "securezone/auth/PasswordPolicy.h"
 
 #include <iostream>
 #include <string>
@@ -10,8 +11,9 @@ int main(int argc, char**) {
     }
 
     std::string password;
-    if (!std::getline(std::cin, password) || password.empty()) {
-        std::cerr << "A non-empty password is required on standard input.\n";
+    if (!std::getline(std::cin, password)
+        || !securezone::auth::isPasswordLengthAllowed(password)) {
+        std::cerr << "Password must contain between 12 and 256 characters.\n";
         return 2;
     }
 

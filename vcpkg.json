@@ -1,6 +1,7 @@
 {
   "name": "perdetect",
   "version-string": "0.1.0",
+  "builtin-baseline": "3e169054dfb52ed75fa3159a81282db4b401ae03",
   "dependencies": [
     "cpp-httplib",
     "jwt-cpp",

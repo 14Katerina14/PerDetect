@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <functional>
+#include <string>
 
 namespace securezone::auth {
 
@@ -18,6 +19,7 @@ public:
         const repository::IAppUserRepository& appUsers,
         const IPasswordVerifier& passwordVerifier,
         const IAccessTokenService& accessTokenService,
+        std::string dummyPasswordHash,
         NowProvider nowProvider = [] { return Clock::now(); }
     );
 
@@ -27,6 +29,7 @@ private:
     const repository::IAppUserRepository& appUsers_;
     const IPasswordVerifier& passwordVerifier_;
     const IAccessTokenService& accessTokenService_;
+    std::string dummyPasswordHash_;
     NowProvider nowProvider_;
 };
 

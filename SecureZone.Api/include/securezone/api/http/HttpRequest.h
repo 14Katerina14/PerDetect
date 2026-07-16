@@ -10,6 +10,7 @@ struct HttpRequest {
     std::string path;
     std::string body;
     std::unordered_map<std::string, std::string> headers;
+    std::string remoteAddress;
 };
 
 }

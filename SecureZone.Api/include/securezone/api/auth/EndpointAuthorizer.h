@@ -3,6 +3,7 @@
 #include "securezone/api/http/HttpRequest.h"
 #include "securezone/auth/AuthorizationPolicy.h"
 #include "securezone/auth/IAccessTokenService.h"
+#include "securezone/repository/IAppUserRepository.h"
 
 #include <functional>
 #include <optional>
@@ -31,6 +32,7 @@ public:
 
     explicit EndpointAuthorizer(
         const auth::IAccessTokenService& accessTokens,
+        const repository::IAppUserRepository& appUsers,
         NowProvider nowProvider = [] { return Clock::now(); }
     );
 
@@ -41,6 +43,7 @@ public:
 
 private:
     const auth::IAccessTokenService& accessTokens_;
+    const repository::IAppUserRepository& appUsers_;
     NowProvider nowProvider_;
 };
 

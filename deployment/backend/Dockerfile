@@ -49,10 +49,11 @@ RUN cmake -S . -B /src/build \
         -DSECUREZONE_BUILD_MONGODB_TESTS=OFF \
         -DSECUREZONE_BUILD_MONGODB_INTEGRATION_TESTS=OFF \
         -DSECUREZONE_BUILD_HTTP_RUNTIME=ON \
-    && cmake --build /src/build --target SecureZone.Api SecureZone.PasswordHash --parallel 2 \
+    && cmake --build /src/build --target SecureZone.Api SecureZone.PasswordHash SecureZone.ProvisionUser --parallel 2 \
     && mkdir -p /opt/securezone \
     && cp /src/build/SecureZone.Api/SecureZone.Api /opt/securezone/SecureZone.Api \
-    && cp /src/build/SecureZone.Tools/SecureZone.PasswordHash /opt/securezone/SecureZone.PasswordHash
+    && cp /src/build/SecureZone.Tools/SecureZone.PasswordHash /opt/securezone/SecureZone.PasswordHash \
+    && cp /src/build/SecureZone.Tools/SecureZone.ProvisionUser /opt/securezone/SecureZone.ProvisionUser
 
 FROM ubuntu:24.04 AS runtime
 
@@ -72,6 +73,7 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=build --chown=securezone:securezone /opt/securezone/SecureZone.Api /app/SecureZone.Api
 COPY --from=build --chown=securezone:securezone /opt/securezone/SecureZone.PasswordHash /app/SecureZone.PasswordHash
+COPY --from=build --chown=securezone:securezone /opt/securezone/SecureZone.ProvisionUser /app/SecureZone.ProvisionUser
 
 ENV SECUREZONE_API_HOST=0.0.0.0 \
     SECUREZONE_API_PORT=8080 \

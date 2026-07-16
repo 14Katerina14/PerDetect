@@ -43,6 +43,24 @@ void argon2idHashVerifiesWithoutCommittedHash() {
     assert(!verifier.verify("test-password", "malformed-hash"));
 }
 
+void passwordHashingEnforcesLengthPolicy() {
+    bool shortPasswordRejected = false;
+    try {
+        (void)infrastructureAuth::hashPasswordArgon2id("too-short");
+    } catch (const std::invalid_argument&) {
+        shortPasswordRejected = true;
+    }
+    assert(shortPasswordRejected);
+
+    bool longPasswordRejected = false;
+    try {
+        (void)infrastructureAuth::hashPasswordArgon2id(std::string(257, 'x'));
+    } catch (const std::invalid_argument&) {
+        longPasswordRejected = true;
+    }
+    assert(longPasswordRejected);
+}
+
 void validWorkerTokenContainsEmployeeClaim() {
     const auto service = tokens();
     const auto issued = service.issue(worker(), Now);
@@ -135,6 +153,7 @@ void rejectsShortSecretConfiguration() {
 
 int main() {
     argon2idHashVerifiesWithoutCommittedHash();
+    passwordHashingEnforcesLengthPolicy();
     validWorkerTokenContainsEmployeeClaim();
     scannerTokenCanOmitEmployeeClaim();
     rejectsExpiredAndWrongSignatureTokens();

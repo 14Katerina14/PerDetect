@@ -1,5 +1,6 @@
 #include "securezone/auth/AuthenticationService.h"
 
+#include <stdexcept>
 #include <utility>
 
 namespace securezone::auth {
@@ -23,11 +24,16 @@ AuthenticationService::AuthenticationService(
     const repository::IAppUserRepository& appUsers,
     const IPasswordVerifier& passwordVerifier,
     const IAccessTokenService& accessTokenService,
+    std::string dummyPasswordHash,
     NowProvider nowProvider
 ) : appUsers_{appUsers},
     passwordVerifier_{passwordVerifier},
     accessTokenService_{accessTokenService},
+    dummyPasswordHash_{std::move(dummyPasswordHash)},
     nowProvider_{std::move(nowProvider)} {
+    if (dummyPasswordHash_.empty()) {
+        throw std::invalid_argument("A dummy password hash is required.");
+    }
 }
 
 LoginResult AuthenticationService::login(const LoginCommand& command) const {
@@ -36,21 +42,20 @@ LoginResult AuthenticationService::login(const LoginCommand& command) const {
     }
 
     const auto user = appUsers_.findByUsername(command.username);
-    if (!user.has_value()
-        || user->status != domain::AppUserStatus::Active
-        || user->passwordHash.empty()
-        || !hasValidIdentityLink(*user)) {
-        return invalidCredentials();
-    }
+    const bool eligible = user.has_value()
+        && user->status == domain::AppUserStatus::Active
+        && !user->passwordHash.empty()
+        && hasValidIdentityLink(*user);
+    const std::string& passwordHash = eligible ? user->passwordHash : dummyPasswordHash_;
 
     bool verified = false;
     try {
-        verified = passwordVerifier_.verify(command.password, user->passwordHash);
+        verified = passwordVerifier_.verify(command.password, passwordHash);
     } catch (...) {
         verified = false;
     }
 
-    if (!verified) {
+    if (!eligible || !verified) {
         return invalidCredentials();
     }
 

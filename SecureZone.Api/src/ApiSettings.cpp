@@ -1,12 +1,27 @@
 #include "securezone/api/ApiSettings.h"
 
 #include <cstdlib>
+#include <algorithm>
+#include <cctype>
 #include <stdexcept>
 #include <string>
 
 namespace securezone::api {
 
 namespace {
+
+bool isPlaceholderSecret(const std::string& value) {
+    std::string normalized = value;
+    std::transform(normalized.begin(), normalized.end(), normalized.begin(),
+        [](unsigned char character) { return static_cast<char>(std::tolower(character)); });
+
+    return value.find('<') != std::string::npos
+        || value.find('>') != std::string::npos
+        || normalized.find("placeholder") != std::string::npos
+        || normalized.find("change-me") != std::string::npos
+        || normalized.find("changeme") != std::string::npos
+        || normalized.find("generate-") != std::string::npos;
+}
 
 std::string envString(const char* name, std::string fallback = {}) {
     if (const auto* value = std::getenv(name); value != nullptr && value[0] != '\0') {
@@ -56,9 +71,9 @@ ApiSettings loadApiSettingsFromEnvironment() {
 }
 
 void validateProductionApiSettings(const ApiSettings& settings) {
-    if (settings.jwtSecret.size() < 32) {
+    if (settings.jwtSecret.size() < 32 || isPlaceholderSecret(settings.jwtSecret)) {
         throw std::runtime_error(
-            "SECUREZONE_JWT_SECRET is required and must contain at least 32 bytes."
+            "SECUREZONE_JWT_SECRET must be a non-placeholder secret containing at least 32 bytes."
         );
     }
     if (settings.jwtTtl.count() <= 0) {

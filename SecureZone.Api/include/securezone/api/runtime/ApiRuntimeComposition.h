@@ -31,6 +31,7 @@ struct ApiRuntimeConfig {
     std::chrono::minutes qrPresenceDuration{2};
     std::shared_ptr<auth::IPasswordVerifier> passwordVerifier;
     std::shared_ptr<auth::IAccessTokenService> accessTokenService;
+    std::string dummyPasswordHash{"dummy-password-hash-for-non-production-runtime"};
     auth::AuthenticationService::NowProvider authNowProvider{
         [] { return auth::AuthenticationService::Clock::now(); }
     };

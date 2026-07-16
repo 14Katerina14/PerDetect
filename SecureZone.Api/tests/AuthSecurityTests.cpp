@@ -1,5 +1,7 @@
 #include "securezone/api/ApiServer.h"
 #include "securezone/api/auth/EndpointAuthorizer.h"
+#include "securezone/api/routes/AuthRoutes.h"
+#include "securezone/repository/IAppUserRepository.h"
 
 #include <cassert>
 #include <chrono>
@@ -7,12 +9,37 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace {
 
 using namespace securezone::api;
 namespace auth = securezone::auth;
 namespace domain = securezone::domain;
+
+class AppUsers final : public securezone::repository::IAppUserRepository {
+public:
+    std::vector<domain::AppUser> users;
+
+    std::optional<domain::AppUser> findByUserId(const std::string& userId) const override {
+        for (const auto& user : users) {
+            if (user.userId == userId) return user;
+        }
+        return std::nullopt;
+    }
+
+    std::optional<domain::AppUser> findByUsername(const std::string& username) const override {
+        for (const auto& user : users) {
+            if (user.username == username) return user;
+        }
+        return std::nullopt;
+    }
+};
+
+domain::AppUser scannerUser() {
+    return {"APP-SCANNER-001", "test-user", {}, "test-password-hash",
+        domain::AppUserRole::Scanner, domain::AppUserStatus::Active};
+}
 
 class AccessTokens final : public auth::IAccessTokenService {
 public:
@@ -114,7 +141,16 @@ void invalidCredentialsHaveOnePublicResponse() {
 
 void qrEndpointEnforcesScannerJwtAndTrustedSubject() {
     AccessTokens accessTokens;
-    EndpointAuthorizer authorizer{accessTokens, [] { return auth::IAccessTokenService::Clock::time_point{}; }};
+    AppUsers appUsers;
+    appUsers.users = {
+        scannerUser(),
+        {"APP-WORKER-001", "test-user", "EMP-001", "test-password-hash",
+            domain::AppUserRole::Worker, domain::AppUserStatus::Active},
+        {"APP-MANAGER-001", "test-user", {}, "test-password-hash",
+            domain::AppUserRole::Manager, domain::AppUserStatus::Active}
+    };
+    EndpointAuthorizer authorizer{accessTokens, appUsers,
+        [] { return auth::IAccessTokenService::Clock::time_point{}; }};
     bool called = false;
     ApiServer server{{}, ApiRouteHandlers{
         [&called](const securezone::qr::QrCheckInCommand& command) {
@@ -163,6 +199,57 @@ void qrEndpointEnforcesScannerJwtAndTrustedSubject() {
     assert(called);
 }
 
+void authorizationUsesCurrentUserStatusAndRole() {
+    AccessTokens accessTokens;
+    AppUsers appUsers;
+    appUsers.users = {scannerUser()};
+    EndpointAuthorizer authorizer{accessTokens, appUsers,
+        [] { return auth::IAccessTokenService::Clock::time_point{}; }};
+    const HttpRequest request{"POST", "/api/qr/check-in", {},
+        {{"Authorization", "Bearer scanner"}}};
+
+    assert(authorizer.authorize(request, auth::AuthorizationPolicy::Scanner).status
+        == EndpointAuthorizationStatus::Authorized);
+
+    appUsers.users.front().status = domain::AppUserStatus::Inactive;
+    assert(authorizer.authorize(request, auth::AuthorizationPolicy::Scanner).status
+        == EndpointAuthorizationStatus::Unauthorized);
+
+    appUsers.users.front().status = domain::AppUserStatus::Active;
+    appUsers.users.front().role = domain::AppUserRole::Manager;
+    assert(authorizer.authorize(request, auth::AuthorizationPolicy::Scanner).status
+        == EndpointAuthorizationStatus::Unauthorized);
+
+    appUsers.users.clear();
+    assert(authorizer.authorize(request, auth::AuthorizationPolicy::Scanner).status
+        == EndpointAuthorizationStatus::Unauthorized);
+}
+
+void loginRateLimitAndInputBoundsAreEnforced() {
+    auto now = AuthRoutes::Clock::time_point{};
+    AuthRoutes routes{
+        [](const auth::LoginCommand&) {
+            return auth::LoginResult{auth::LoginStatus::InvalidCredentials, {}, std::nullopt};
+        },
+        [&now] { return now; }
+    };
+    const std::string body = R"({"username":"scanner","password":"wrong-password"})";
+
+    for (int attempt = 0; attempt < 4; ++attempt) {
+        assert(routes.handleLogin({"POST", "/api/auth/login", body, {}, "10.0.0.1"}).statusCode == 401);
+    }
+    assert(routes.handleLogin({"POST", "/api/auth/login", body, {}, "10.0.0.1"}).statusCode == 429);
+    assert(routes.handleLogin({"POST", "/api/auth/login", body, {}, "10.0.0.2"}).statusCode == 401);
+
+    now += std::chrono::minutes{2};
+    assert(routes.handleLogin({"POST", "/api/auth/login", body, {}, "10.0.0.1"}).statusCode == 401);
+
+    assert(routes.handleLogin({"POST", "/api/auth/login", std::string(4097, 'x'), {}, "10.0.0.3"}).statusCode == 413);
+    const std::string oversizedPassword = R"({"username":"scanner","password":")"
+        + std::string(257, 'x') + R"("})";
+    assert(routes.handleLogin({"POST", "/api/auth/login", oversizedPassword, {}, "10.0.0.3"}).statusCode == 400);
+}
+
 void healthRemainsPublic() {
     const ApiServer server{};
     assert(server.handle({"GET", "/health", {}, {}}).statusCode == 200);
@@ -177,6 +264,15 @@ void productionSettingsRequireStrongJwtSecret() {
         missingThrew = true;
     }
     assert(missingThrew);
+
+    settings.jwtSecret = "<required-generate-at-least-32-random-bytes>";
+    bool placeholderThrew = false;
+    try {
+        validateProductionApiSettings(settings);
+    } catch (const std::runtime_error&) {
+        placeholderThrew = true;
+    }
+    assert(placeholderThrew);
 
     settings.jwtSecret = "a-development-secret-that-is-at-least-32-bytes";
     validateProductionApiSettings(settings);
@@ -197,6 +293,8 @@ int main() {
     loginUsesStrictJsonAndNeverReturnsPasswordMaterial();
     invalidCredentialsHaveOnePublicResponse();
     qrEndpointEnforcesScannerJwtAndTrustedSubject();
+    authorizationUsesCurrentUserStatusAndRole();
+    loginRateLimitAndInputBoundsAreEnforced();
     healthRemainsPublic();
     productionSettingsRequireStrongJwtSecret();
 }

@@ -1,5 +1,7 @@
 #include "securezone/infrastructure/auth/SodiumPasswordVerifier.h"
 
+#include "securezone/auth/PasswordPolicy.h"
+
 #include <sodium.h>
 
 #include <array>
@@ -41,8 +43,8 @@ bool SodiumPasswordVerifier::verify(
 }
 
 std::string hashPasswordArgon2id(std::string_view password) {
-    if (password.empty()) {
-        throw std::invalid_argument("Password must not be empty.");
+    if (!securezone::auth::isPasswordLengthAllowed(password)) {
+        throw std::invalid_argument("Password must contain between 12 and 256 characters.");
     }
 
     ensureSodiumInitialized();

@@ -39,8 +39,10 @@ std::optional<std::string> bearerToken(const HttpRequest& request) {
 
 EndpointAuthorizer::EndpointAuthorizer(
     const auth::IAccessTokenService& accessTokens,
+    const repository::IAppUserRepository& appUsers,
     NowProvider nowProvider
 ) : accessTokens_{accessTokens},
+    appUsers_{appUsers},
     nowProvider_{std::move(nowProvider)} {
 }
 
@@ -55,6 +57,23 @@ EndpointAuthorizationResult EndpointAuthorizer::authorize(
 
     const auto validation = accessTokens_.validate(*token, nowProvider_());
     if (!validation.valid()) {
+        return {};
+    }
+
+    std::optional<domain::AppUser> currentUser;
+    try {
+        currentUser = appUsers_.findByUserId(validation.principal->userId);
+    } catch (...) {
+        return {};
+    }
+
+    if (!currentUser.has_value()
+        || currentUser->status != domain::AppUserStatus::Active
+        || currentUser->username != validation.principal->username
+        || currentUser->role != validation.principal->role
+        || currentUser->employeeId != validation.principal->employeeId
+        || (currentUser->role == domain::AppUserRole::Worker
+            && currentUser->employeeId.empty())) {
         return {};
     }
 

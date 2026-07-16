@@ -334,6 +334,7 @@ struct ApiRuntimeComposition::State {
         if (this->config.accessTokenService) {
             endpointAuthorizer = std::make_unique<EndpointAuthorizer>(
                 *this->config.accessTokenService,
+                appUsers,
                 this->config.authNowProvider
             );
         }
@@ -342,6 +343,7 @@ struct ApiRuntimeComposition::State {
                 appUsers,
                 *this->config.passwordVerifier,
                 *this->config.accessTokenService,
+                this->config.dummyPasswordHash,
                 this->config.authNowProvider
             );
         }
