@@ -72,13 +72,15 @@ XProtectPolicyAlarmService::XProtectPolicyAlarmService(
     repository::IAccessPolicyRepository& accessPolicyRepository,
     repository::IMachineRepository& machineRepository,
     repository::IAlarmRepository& alarmRepository,
-    AlarmCreatedNotifier alarmCreatedNotifier
+    AlarmCreatedNotifier alarmCreatedNotifier,
+    AlarmResolvedNotifier alarmResolvedNotifier
 ) : employeeRepository_{employeeRepository},
     accessPolicyRepository_{accessPolicyRepository},
     machineRepository_{machineRepository},
     alarmRepository_{alarmRepository},
     alarmPersistenceService_{alarmRepository},
-    alarmCreatedNotifier_{std::move(alarmCreatedNotifier)} {
+    alarmCreatedNotifier_{std::move(alarmCreatedNotifier)},
+    alarmResolvedNotifier_{std::move(alarmResolvedNotifier)} {
 }
 
 XProtectLineCrossingDecision XProtectPolicyAlarmService::evaluate(
@@ -132,6 +134,15 @@ XProtectLineCrossingDecision XProtectPolicyAlarmService::evaluate(
 
         if (action != alarm::AlarmPersistenceAction::Resolved) {
             return result(zone, binding, "allowed", "No active alarm existed for the exiting camera object.");
+        }
+
+        if (alarmResolvedNotifier_) {
+            auto resolvedAlarm = *activeAlarm;
+            resolvedAlarm.status = domain::AlarmStatus::Resolved;
+            resolvedAlarm.stillInside = false;
+            resolvedAlarm.exitedAt = command.receivedAt;
+            resolvedAlarm.resolvedAt = command.receivedAt;
+            alarmResolvedNotifier_(resolvedAlarm);
         }
 
         if (alarmRepository_.countActiveByZone(zone.zoneId) == 0U) {

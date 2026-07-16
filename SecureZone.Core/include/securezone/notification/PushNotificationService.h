@@ -21,6 +21,11 @@ public:
         std::chrono::system_clock::time_point queuedAt
     );
 
+    std::size_t queueAlarmResolvedNotifications(
+        const domain::Alarm& alarm,
+        std::chrono::system_clock::time_point queuedAt
+    );
+
 private:
     repository::IPushSubscriptionRepository& subscriptionRepository_;
     repository::IPushNotificationDeliveryRepository& deliveryRepository_;

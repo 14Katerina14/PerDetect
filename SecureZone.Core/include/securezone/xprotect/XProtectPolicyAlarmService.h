@@ -15,13 +15,15 @@ namespace securezone::xprotect {
 class XProtectPolicyAlarmService {
 public:
     using AlarmCreatedNotifier = std::function<void(const domain::Alarm&)>;
+    using AlarmResolvedNotifier = std::function<void(const domain::Alarm&)>;
 
     XProtectPolicyAlarmService(
         repository::IEmployeeRepository& employeeRepository,
         repository::IAccessPolicyRepository& accessPolicyRepository,
         repository::IMachineRepository& machineRepository,
         repository::IAlarmRepository& alarmRepository,
-        AlarmCreatedNotifier alarmCreatedNotifier = {}
+        AlarmCreatedNotifier alarmCreatedNotifier = {},
+        AlarmResolvedNotifier alarmResolvedNotifier = {}
     );
 
     XProtectLineCrossingDecision evaluate(
@@ -38,6 +40,7 @@ private:
     decision::DecisionEngine decisionEngine_;
     alarm::AlarmPersistenceService alarmPersistenceService_;
     AlarmCreatedNotifier alarmCreatedNotifier_;
+    AlarmResolvedNotifier alarmResolvedNotifier_;
 };
 
 }

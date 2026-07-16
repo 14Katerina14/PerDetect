@@ -169,6 +169,24 @@ void queuesOneDeliveryPerRecipientAndDeduplicates() {
     assert(deliveries.deliveries.front().reason == alarm().reason);
 }
 
+void queuesSeparateResolvedDeliveryPerRecipient() {
+    FakeSubscriptionRepository subscriptions;
+    subscriptions.subscriptions = {subscription("SUB-MANAGER", "USER-MANAGER")};
+    FakeDeliveryRepository deliveries;
+    notification::PushNotificationService service{subscriptions, deliveries};
+    auto resolvedAlarm = alarm();
+    resolvedAlarm.status = domain::AlarmStatus::Resolved;
+    resolvedAlarm.stillInside = false;
+    resolvedAlarm.resolvedAt = at(20);
+
+    assert(service.queueAlarmNotifications(resolvedAlarm, at(10)) == 1U);
+    assert(service.queueAlarmResolvedNotifications(resolvedAlarm, at(20)) == 1U);
+    assert(service.queueAlarmResolvedNotifications(resolvedAlarm, at(21)) == 0U);
+    assert(deliveries.deliveries.size() == 2U);
+    assert(deliveries.deliveries.back().title == "SecureZone violation cleared");
+    assert(deliveries.deliveries.back().body == "Access violation cleared in zone ZONE-001.");
+}
+
 void deliversQueuedNotification() {
     FakeSubscriptionRepository subscriptions;
     subscriptions.subscriptions = {subscription("SUB-1", "USER-1")};
@@ -239,6 +257,7 @@ void convertsProviderExceptionsIntoRetryableFailures() {
 
 int main() {
     queuesOneDeliveryPerRecipientAndDeduplicates();
+    queuesSeparateResolvedDeliveryPerRecipient();
     deliversQueuedNotification();
     retriesProviderFailureAndEventuallyExhausts();
     exhaustsDeliveryWhenSubscriptionIsInactive();

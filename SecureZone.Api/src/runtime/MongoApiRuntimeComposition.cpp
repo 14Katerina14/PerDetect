@@ -108,6 +108,12 @@ struct MongoApiRuntimeComposition::State {
                       alarm,
                       std::chrono::system_clock::now()
                   );
+              },
+              [this](const domain::Alarm& alarm) {
+                  pushNotificationService.queueAlarmResolvedNotifications(
+                      alarm,
+                      std::chrono::system_clock::now()
+                  );
               }
           },
           xprotectService{
