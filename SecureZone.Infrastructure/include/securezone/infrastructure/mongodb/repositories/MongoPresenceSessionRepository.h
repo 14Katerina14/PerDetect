@@ -8,10 +8,13 @@
 
 #include "securezone/domain/PresenceSession.h"
 #include "securezone/repository/IPresenceSessionRepository.h"
+#include "securezone/repository/IPresenceSessionReadRepository.h"
 
 namespace securezone::infrastructure::mongodb::repositories {
 
-class MongoPresenceSessionRepository final : public repository::IPresenceSessionRepository {
+class MongoPresenceSessionRepository final
+    : public repository::IPresenceSessionRepository,
+      public repository::IPresenceSessionReadRepository {
 public:
     explicit MongoPresenceSessionRepository(mongocxx::collection presenceSessionsCollection);
 
@@ -23,6 +26,12 @@ public:
     std::optional<domain::PresenceSession> findActiveByZoneAt(
         const std::string& zoneId,
         std::chrono::system_clock::time_point at
+    ) const override;
+
+    std::vector<domain::PresenceSession> findActiveAt(
+        std::chrono::system_clock::time_point at,
+        std::size_t limit,
+        const std::optional<std::string>& zoneId = std::nullopt
     ) const override;
 
     void create(const domain::PresenceSession& presenceSession) override;
