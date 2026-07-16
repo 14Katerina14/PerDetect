@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(SecureZoneCore LANGUAGES CXX)
 
 add_library(SecureZoneCore
+    src/auth/AuthenticationService.cpp
     src/alarm/AlarmLifecycleService.cpp
     src/configuration/AccessPolicyConfigurationService.cpp
     src/configuration/WebhookTargetConfigurationService.cpp
@@ -39,6 +40,7 @@ set(SECUREZONE_CORE_TESTS
     XProtectPolicyAlarmServiceTests
     CameraIdentityServiceTests
     PushNotificationTests
+    AuthenticationTests
 )
 
 foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
@@ -56,6 +58,8 @@ foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
         set(test_source tests/identity/CameraIdentityServiceTests.cpp)
     elseif(test_name STREQUAL "PushNotificationTests")
         set(test_source tests/notification/PushNotificationTests.cpp)
+    elseif(test_name STREQUAL "AuthenticationTests")
+        set(test_source tests/auth/AuthenticationTests.cpp)
     else()
         set(test_source tests/${test_name}.cpp)
     endif()

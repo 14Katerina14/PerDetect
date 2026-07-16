@@ -3,6 +3,9 @@
   "version-string": "0.1.0",
   "dependencies": [
     "cpp-httplib",
-    "mongo-cxx-driver"
+    "jwt-cpp",
+    "libsodium",
+    "mongo-cxx-driver",
+    "nlohmann-json"
   ]
 }

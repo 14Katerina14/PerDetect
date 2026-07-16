@@ -25,14 +25,16 @@ bsoncxx::document::value appUserDocument(
     std::string userId,
     std::string username,
     std::string role,
-    std::string status
+    std::string status,
+    std::string passwordHash = "test-hash-placeholder"
 ) {
     bsoncxx::builder::basic::document document;
     document.append(
         bsoncxx::builder::basic::kvp("userId", userId),
         bsoncxx::builder::basic::kvp("username", username),
         bsoncxx::builder::basic::kvp("role", role),
-        bsoncxx::builder::basic::kvp("status", status)
+        bsoncxx::builder::basic::kvp("status", status),
+        bsoncxx::builder::basic::kvp("passwordHash", passwordHash)
     );
     return document.extract();
 }
@@ -92,17 +94,8 @@ int main() {
     collection.insert_one(invalidRoleDocument.view());
     collection.insert_one(invalidStatusDocument.view());
 
-    try {
-        repository.findByUserId("APP-INVALID-ROLE");
-        assert(false && "Expected invalid role document to throw.");
-    } catch (const std::runtime_error&) {
-    }
-
-    try {
-        repository.findByUsername("invalid-status");
-        assert(false && "Expected invalid status document to throw.");
-    } catch (const std::runtime_error&) {
-    }
+    assert(!repository.findByUserId("APP-INVALID-ROLE").has_value());
+    assert(!repository.findByUsername("invalid-status").has_value());
 
     database.drop();
 }

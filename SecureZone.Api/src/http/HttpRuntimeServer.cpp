@@ -34,6 +34,7 @@ bool runHttpRuntimeServer(const ApiApplication& application) {
     };
 
     server.Get("/health", handle);
+    server.Post("/api/auth/login", handle);
     server.Post("/api/qr/check-in", handle);
     server.Post("/api/xprotect/line-crossing", handle);
     server.Post("/api/xprotect/object-observations", handle);

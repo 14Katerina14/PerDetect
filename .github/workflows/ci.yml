@@ -32,7 +32,7 @@ jobs:
             sudo apt-get install -y ripgrep
           fi
 
-          pattern='(securezone[_-]?pass|Test123|MyUser|mongodb://[^[:space:]]+:[^[:space:]@]+@|XPCO|192\.168\.)'
+          pattern='(securezone[_-]?pass|Test123|MyUser|mongodb://[^[:space:]]+:[^[:space:]@]+@|XPCO|192\.168\.|SECUREZONE_JWT_SECRET[=:][^$<[:space:]])'
 
           if rg -n --hidden --glob '!.git/**' --glob '!.github/workflows/ci.yml' --glob '!*.example' "$pattern" .; then
             echo "Potential secret or environment-specific value found. Replace it with an environment variable or placeholder."
@@ -107,4 +107,16 @@ jobs:
 
       - name: Run MongoDB mapper tests
         run: |
-          ctest --test-dir build-mongodb -C Debug -L mongodb --output-on-failure
+          ctest --test-dir build-mongodb -C Debug -L "mongodb|auth" --output-on-failure
+
+  backend-container:
+    name: Backend container build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build SecureZone backend image
+        run: |
+          docker build --file deployment/backend/Dockerfile --tag securezone-api:ci .

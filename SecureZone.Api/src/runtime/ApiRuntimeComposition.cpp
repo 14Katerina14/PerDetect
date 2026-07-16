@@ -1,6 +1,8 @@
 #include "securezone/api/runtime/ApiRuntimeComposition.h"
 
 #include "securezone/api/handlers/XProtectLineCrossingHandler.h"
+#include "securezone/api/auth/EndpointAuthorizer.h"
+#include "securezone/auth/AuthenticationService.h"
 #include "securezone/domain/QrCheckIn.h"
 #include "securezone/presence/PresenceSessionService.h"
 #include "securezone/qr/QrCheckInService.h"
@@ -329,6 +331,20 @@ struct ApiRuntimeComposition::State {
                   return presenceSessions.findActiveByZoneAt(zone.zoneId, at);
               }
           } {
+        if (this->config.accessTokenService) {
+            endpointAuthorizer = std::make_unique<EndpointAuthorizer>(
+                *this->config.accessTokenService,
+                this->config.authNowProvider
+            );
+        }
+        if (this->config.passwordVerifier && this->config.accessTokenService) {
+            authenticationService = std::make_unique<auth::AuthenticationService>(
+                appUsers,
+                *this->config.passwordVerifier,
+                *this->config.accessTokenService,
+                this->config.authNowProvider
+            );
+        }
     }
 
     std::optional<domain::Zone> resolveXProtectZone(
@@ -358,6 +374,8 @@ struct ApiRuntimeComposition::State {
     presence::PresenceSessionService presenceService;
     qr::QrCheckInService qrService;
     xprotect::XProtectLineCrossingService xprotectService;
+    std::unique_ptr<auth::AuthenticationService> authenticationService;
+    std::unique_ptr<EndpointAuthorizer> endpointAuthorizer;
 };
 
 ApiRuntimeComposition::ApiRuntimeComposition(ApiRuntimeConfig config)
@@ -376,7 +394,29 @@ ApiRouteHandlers ApiRuntimeComposition::createRouteHandlers() const {
     return ApiRouteHandlers{
         createQrCheckInHandler(),
         createXProtectLineCrossingHandler(),
-        {}
+        {},
+        createLoginHandler(),
+        createAuthorizationHandler()
+    };
+}
+
+AuthRoutes::LoginHandler ApiRuntimeComposition::createLoginHandler() const {
+    const auto state = state_;
+    if (!state->authenticationService) {
+        return {};
+    }
+    return [state](const auth::LoginCommand& command) {
+        return state->authenticationService->login(command);
+    };
+}
+
+EndpointAuthorizer::Handler ApiRuntimeComposition::createAuthorizationHandler() const {
+    const auto state = state_;
+    if (!state->endpointAuthorizer) {
+        return {};
+    }
+    return [state](const HttpRequest& request, auth::AuthorizationPolicy policy) {
+        return state->endpointAuthorizer->authorize(request, policy);
     };
 }
 

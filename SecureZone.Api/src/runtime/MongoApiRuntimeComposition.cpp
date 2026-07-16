@@ -1,6 +1,10 @@
 #include "securezone/api/runtime/MongoApiRuntimeComposition.h"
 
 #include "securezone/api/handlers/XProtectLineCrossingHandler.h"
+#include "securezone/api/auth/EndpointAuthorizer.h"
+#include "securezone/auth/AuthenticationService.h"
+#include "securezone/infrastructure/auth/JwtAccessTokenService.h"
+#include "securezone/infrastructure/auth/SodiumPasswordVerifier.h"
 #include "securezone/infrastructure/mongodb/MongoDbClient.h"
 #include "securezone/infrastructure/mongodb/MongoDbSettingsProvider.h"
 #include "securezone/infrastructure/mongodb/MongoRepositoryProvider.h"
@@ -59,6 +63,15 @@ struct MongoApiRuntimeComposition::State {
           trackIdentityBindings{repositoryProvider.trackIdentityBindingRepository()},
           pushSubscriptions{repositoryProvider.pushSubscriptionRepository()},
           pushDeliveries{repositoryProvider.pushNotificationDeliveryRepository()},
+          passwordVerifier{},
+          accessTokens{{
+              this->config.apiRuntime.apiSettings.jwtSecret,
+              this->config.apiRuntime.apiSettings.jwtTtl,
+              "securezone",
+              "securezone-mobile"
+          }},
+          authenticationService{appUsers, passwordVerifier, accessTokens},
+          endpointAuthorizer{accessTokens},
           cameraIdentityService{cameraObjectTracks, trackIdentityBindings},
           presenceService{employees, appUsers, zones, qrCheckins, presenceSessions},
           qrService{
@@ -131,6 +144,10 @@ struct MongoApiRuntimeComposition::State {
     infrastructure::mongodb::repositories::MongoTrackIdentityBindingRepository trackIdentityBindings;
     infrastructure::mongodb::repositories::MongoPushSubscriptionRepository pushSubscriptions;
     infrastructure::mongodb::repositories::MongoPushNotificationDeliveryRepository pushDeliveries;
+    infrastructure::auth::SodiumPasswordVerifier passwordVerifier;
+    infrastructure::auth::JwtAccessTokenService accessTokens;
+    auth::AuthenticationService authenticationService;
+    EndpointAuthorizer endpointAuthorizer;
     identity::CameraIdentityService cameraIdentityService;
     presence::PresenceSessionService presenceService;
     qr::QrCheckInService qrService;
@@ -155,7 +172,23 @@ ApiRouteHandlers MongoApiRuntimeComposition::createRouteHandlers() const {
     return ApiRouteHandlers{
         createQrCheckInHandler(),
         createXProtectLineCrossingHandler(),
-        createCameraObjectObservationHandler()
+        createCameraObjectObservationHandler(),
+        createLoginHandler(),
+        createAuthorizationHandler()
+    };
+}
+
+AuthRoutes::LoginHandler MongoApiRuntimeComposition::createLoginHandler() const {
+    const auto state = state_;
+    return [state](const auth::LoginCommand& command) {
+        return state->authenticationService.login(command);
+    };
+}
+
+EndpointAuthorizer::Handler MongoApiRuntimeComposition::createAuthorizationHandler() const {
+    const auto state = state_;
+    return [state](const HttpRequest& request, auth::AuthorizationPolicy policy) {
+        return state->endpointAuthorizer.authorize(request, policy);
     };
 }
 

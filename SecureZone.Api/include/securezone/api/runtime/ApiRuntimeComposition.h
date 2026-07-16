@@ -1,6 +1,7 @@
 #pragma once
 
 #include "securezone/api/ApiApplication.h"
+#include "securezone/auth/AuthenticationService.h"
 #include "securezone/domain/AppUser.h"
 #include "securezone/domain/Employee.h"
 #include "securezone/domain/PresenceSession.h"
@@ -28,6 +29,11 @@ struct ApiRuntimeConfig {
     std::vector<domain::PresenceSession> presenceSessions;
     std::vector<XProtectZoneEventMapping> xprotectZoneMappings;
     std::chrono::minutes qrPresenceDuration{2};
+    std::shared_ptr<auth::IPasswordVerifier> passwordVerifier;
+    std::shared_ptr<auth::IAccessTokenService> accessTokenService;
+    auth::AuthenticationService::NowProvider authNowProvider{
+        [] { return auth::AuthenticationService::Clock::now(); }
+    };
 };
 
 class ApiRuntimeComposition {
@@ -37,6 +43,8 @@ public:
     ApiApplication createApplication() const;
     ApiRouteHandlers createRouteHandlers() const;
     QrRoutes::CheckInHandler createQrCheckInHandler() const;
+    AuthRoutes::LoginHandler createLoginHandler() const;
+    EndpointAuthorizer::Handler createAuthorizationHandler() const;
     XProtectEventRoutes::LineCrossingHandler createXProtectLineCrossingHandler() const;
 
 private:

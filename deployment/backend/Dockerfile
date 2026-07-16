@@ -48,9 +48,10 @@ RUN cmake -S . -B /src/build \
         -DSECUREZONE_BUILD_MONGODB_TESTS=OFF \
         -DSECUREZONE_BUILD_MONGODB_INTEGRATION_TESTS=OFF \
         -DSECUREZONE_BUILD_HTTP_RUNTIME=ON \
-    && cmake --build /src/build --target SecureZone.Api --parallel 2 \
+    && cmake --build /src/build --target SecureZone.Api SecureZone.PasswordHash --parallel 2 \
     && mkdir -p /opt/securezone \
-    && cp /src/build/SecureZone.Api/SecureZone.Api /opt/securezone/SecureZone.Api
+    && cp /src/build/SecureZone.Api/SecureZone.Api /opt/securezone/SecureZone.Api \
+    && cp /src/build/SecureZone.Tools/SecureZone.PasswordHash /opt/securezone/SecureZone.PasswordHash
 
 FROM ubuntu:24.04 AS runtime
 
@@ -69,11 +70,13 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY --from=build --chown=securezone:securezone /opt/securezone/SecureZone.Api /app/SecureZone.Api
+COPY --from=build --chown=securezone:securezone /opt/securezone/SecureZone.PasswordHash /app/SecureZone.PasswordHash
 
 ENV SECUREZONE_API_HOST=0.0.0.0 \
     SECUREZONE_API_PORT=8080 \
     SECUREZONE_MONGO_DATABASE=securezone \
-    SECUREZONE_QR_PRESENCE_MINUTES=2
+    SECUREZONE_QR_PRESENCE_MINUTES=2 \
+    SECUREZONE_JWT_TTL_MINUTES=60
 
 EXPOSE 8080
 

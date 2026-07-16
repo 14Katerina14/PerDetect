@@ -1,6 +1,7 @@
 #include "securezone/api/ApiSettings.h"
 
 #include <cstdlib>
+#include <stdexcept>
 #include <string>
 
 namespace securezone::api {
@@ -40,7 +41,23 @@ ApiSettings loadApiSettingsFromEnvironment() {
     settings.qrPresenceDuration = std::chrono::minutes{
         envInt("SECUREZONE_QR_PRESENCE_MINUTES", static_cast<int>(settings.qrPresenceDuration.count()))
     };
+    settings.jwtSecret = envString("SECUREZONE_JWT_SECRET");
+    settings.jwtTtl = std::chrono::minutes{
+        envInt("SECUREZONE_JWT_TTL_MINUTES", static_cast<int>(settings.jwtTtl.count()))
+    };
+    validateProductionApiSettings(settings);
     return settings;
+}
+
+void validateProductionApiSettings(const ApiSettings& settings) {
+    if (settings.jwtSecret.size() < 32) {
+        throw std::runtime_error(
+            "SECUREZONE_JWT_SECRET is required and must contain at least 32 bytes."
+        );
+    }
+    if (settings.jwtTtl.count() <= 0) {
+        throw std::runtime_error("SECUREZONE_JWT_TTL_MINUTES must be a positive integer.");
+    }
 }
 
 }

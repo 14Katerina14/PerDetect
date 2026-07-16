@@ -28,6 +28,7 @@ securezone.app_users.createIndex({ userId: 1 }, { unique: true });
 securezone.app_users.createIndex({ username: 1 }, { unique: true });
 securezone.app_users.createIndex({ role: 1 });
 securezone.app_users.createIndex({ status: 1 });
+securezone.app_users.createIndex({ employeeId: 1 }, { sparse: true });
 
 securezone.employees.createIndex({ employeeId: 1 }, { unique: true });
 securezone.employees.createIndex({ qrTokenHash: 1 }, { unique: true });
