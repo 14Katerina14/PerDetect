@@ -24,6 +24,44 @@ const auto XProtectEventTime = Clock::time_point{} + std::chrono::minutes{10};
 const std::string WiseAiLineCrossingEvent = "Channel.<int>.OpenSDK.WiseAI.LineCrossing.<int>.State-2";
 const std::string CameraSource = "Hanwha Vision TNO-C4052T TEST-CAMERA - Camera 1";
 
+EndpointAuthorizationResult authorizeScanner(
+    const HttpRequest&,
+    securezone::auth::AuthorizationPolicy policy
+) {
+    if (policy != securezone::auth::AuthorizationPolicy::Scanner) {
+        return {EndpointAuthorizationStatus::Forbidden, std::nullopt};
+    }
+    return {
+        EndpointAuthorizationStatus::Authorized,
+        securezone::auth::AuthenticatedPrincipal{
+            "APP-SCANNER-001", "scanner", domain::AppUserRole::Scanner, {}
+        }
+    };
+}
+
+class TestAccessTokens final : public securezone::auth::IAccessTokenService {
+public:
+    securezone::auth::IssuedAccessToken issue(
+        const securezone::auth::AuthenticatedPrincipal&,
+        Clock::time_point
+    ) const override {
+        return {"scanner-token", std::chrono::seconds{3600}};
+    }
+
+    securezone::auth::AccessTokenValidationResult validate(
+        std::string_view token,
+        Clock::time_point
+    ) const override {
+        if (token != "scanner-token") return {};
+        return {
+            securezone::auth::AccessTokenValidationStatus::Valid,
+            securezone::auth::AuthenticatedPrincipal{
+                "APP-SCANNER-001", "scanner", domain::AppUserRole::Scanner, {}
+            }
+        };
+    }
+};
+
 domain::Zone mappedXProtectZone() {
     domain::Zone zone{};
     zone.zoneId = "ZONE-001";
@@ -107,6 +145,7 @@ ApiRuntimeConfig compositionConfig(bool includePresenceSession) {
         CameraSource,
         "ZONE-001"
     }};
+    config.accessTokenService = std::make_shared<TestAccessTokens>();
 
     if (includePresenceSession) {
         config.presenceSessions = {activeCompositionPresenceSession()};
@@ -136,13 +175,12 @@ void qrRouteRequiresConfiguredService() {
     });
 
     assert(response.statusCode == 503);
-    assert(response.body.find("service_unavailable") != std::string::npos);
+    assert(response.body.find("authorization_unavailable") != std::string::npos);
 }
 
 void qrRouteCallsConfiguredCheckInHandler() {
     bool called = false;
-    ApiServer server{
-        {},
+    ApiServer server{{}, ApiRouteHandlers{
         [&called](const securezone::qr::QrCheckInCommand& command) {
             called = true;
             assert(command.employeeId == "EMP-001");
@@ -154,8 +192,8 @@ void qrRouteCallsConfiguredCheckInHandler() {
                 "SESSION-001",
                 {}
             };
-        }
-    };
+        }, {}, {}, {}, authorizeScanner
+    }};
 
     const auto response = server.handle({
         "POST",
@@ -356,13 +394,11 @@ void applicationRoutesQrCheckInRequests() {
     });
 
     assert(response.statusCode == 503);
-    assert(response.body.find("QR check-in service is not configured") != std::string::npos);
+    assert(response.body.find("authorization_unavailable") != std::string::npos);
 }
 
 void applicationRoutesQrCheckInRequestsToConfiguredHandler() {
-    ApiApplication app{
-        {},
-        {},
+    ApiApplication app{{}, {}, ApiRouteHandlers{
         [](const securezone::qr::QrCheckInCommand& command) {
             assert(command.employeeId == "EMP-001");
             assert(command.zoneId == "ZONE-001");
@@ -373,8 +409,8 @@ void applicationRoutesQrCheckInRequestsToConfiguredHandler() {
                 "SESSION-001",
                 {}
             };
-        }
-    };
+        }, {}, {}, {}, authorizeScanner
+    }};
 
     const auto response = app.handle({
         "POST",
@@ -399,8 +435,7 @@ void qrRouteMapsRejectedStatusesToHttpResponses() {
     };
 
     for (const auto& testCase : cases) {
-        ApiServer server{
-            {},
+        ApiServer server{{}, ApiRouteHandlers{
             [&testCase](const securezone::qr::QrCheckInCommand&) {
                 return securezone::qr::QrCheckInResult{
                     false,
@@ -408,8 +443,8 @@ void qrRouteMapsRejectedStatusesToHttpResponses() {
                     {},
                     "mapped message"
                 };
-            }
-        };
+            }, {}, {}, {}, authorizeScanner
+        }};
 
         const auto response = server.handle({
             "POST",
@@ -637,7 +672,7 @@ void runtimeCompositionWiresQrCheckInHandler() {
         "POST",
         "/api/qr/check-in",
         R"({"employeeId":"EMP-001","zoneId":"ZONE-001","scannedByUserId":"APP-SCANNER-001"})",
-        {}
+        {{"Authorization", "Bearer scanner-token"}}
     });
 
     assert(response.statusCode == 201);

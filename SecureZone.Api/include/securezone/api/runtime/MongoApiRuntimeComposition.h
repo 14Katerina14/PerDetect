@@ -20,6 +20,8 @@ public:
     ApiApplication createApplication() const;
     ApiRouteHandlers createRouteHandlers() const;
     QrRoutes::CheckInHandler createQrCheckInHandler() const;
+    AuthRoutes::LoginHandler createLoginHandler() const;
+    EndpointAuthorizer::Handler createAuthorizationHandler() const;
     XProtectEventRoutes::LineCrossingHandler createXProtectLineCrossingHandler() const;
     CameraObjectRoutes::ObservationHandler createCameraObjectObservationHandler() const;
 

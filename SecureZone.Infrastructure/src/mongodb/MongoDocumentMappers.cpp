@@ -139,6 +139,10 @@ domain::EmployeeStatus employeeStatusFromString(const std::string& value) {
 }
 
 domain::AppUserRole appUserRoleFromString(const std::string& value) {
+    if (value == "worker") {
+        return domain::AppUserRole::Worker;
+    }
+
     if (value == "scanner") {
         return domain::AppUserRole::Scanner;
     }
@@ -278,22 +282,29 @@ domain::Employee mapEmployeeDocument(bsoncxx::document::view document) {
     return employee;
 }
 
-domain::AppUser mapAppUserDocument(bsoncxx::document::view document) {
-    domain::AppUser user{};
-    user.userId = requiredString(document, "userId");
-    user.username = requiredString(document, "username");
+std::optional<domain::AppUser> mapAppUserDocument(
+    bsoncxx::document::view document
+) noexcept {
+    try {
+        domain::AppUser user{};
+        user.userId = requiredString(document, "userId");
+        user.username = requiredString(document, "username");
+        user.employeeId = optionalString(document, "employeeId");
+        user.passwordHash = requiredString(document, "passwordHash");
 
-    if (user.userId.empty()) {
-        throw std::runtime_error("MongoDB app user document has empty userId.");
+        if (user.userId.empty() || user.username.empty() || user.passwordHash.empty()) {
+            return std::nullopt;
+        }
+
+        user.role = appUserRoleFromString(requiredString(document, "role"));
+        user.status = appUserStatusFromString(requiredString(document, "status"));
+        if (user.role == domain::AppUserRole::Worker && user.employeeId.empty()) {
+            return std::nullopt;
+        }
+        return user;
+    } catch (...) {
+        return std::nullopt;
     }
-
-    if (user.username.empty()) {
-        throw std::runtime_error("MongoDB app user document has empty username.");
-    }
-
-    user.role = appUserRoleFromString(requiredString(document, "role"));
-    user.status = appUserStatusFromString(requiredString(document, "status"));
-    return user;
 }
 
 domain::Zone mapZoneDocument(bsoncxx::document::view document) {

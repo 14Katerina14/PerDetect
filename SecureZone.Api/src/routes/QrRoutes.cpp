@@ -2,24 +2,14 @@
 
 #include "securezone/api/ApiResponse.h"
 
-#include <optional>
-#include <regex>
+#include <nlohmann/json.hpp>
+
 #include <sstream>
 #include <string>
 #include <utility>
 
 namespace securezone::api {
 namespace {
-
-std::optional<std::string> readJsonStringField(const std::string& body, const std::string& fieldName) {
-    const std::regex fieldPattern{"\"" + fieldName + "\"\\s*:\\s*\"([^\"]*)\""};
-    std::smatch match;
-    if (!std::regex_search(body, match, fieldPattern)) {
-        return std::nullopt;
-    }
-
-    return match[1].str();
-}
 
 std::string jsonEscape(const std::string& value) {
     std::string escaped;
@@ -83,11 +73,26 @@ HttpResponse qrResultResponse(const qr::QrCheckInResult& result) {
 
 }
 
-QrRoutes::QrRoutes(CheckInHandler checkInHandler)
-    : checkInHandler_{std::move(checkInHandler)} {
+QrRoutes::QrRoutes(
+    CheckInHandler checkInHandler,
+    EndpointAuthorizer::Handler authorizeHandler
+) : checkInHandler_{std::move(checkInHandler)},
+    authorizeHandler_{std::move(authorizeHandler)} {
 }
 
 HttpResponse QrRoutes::handleCheckIn(const HttpRequest& request) const {
+    if (!authorizeHandler_) {
+        return jsonResponse(503, R"({"error":"authorization_unavailable"})");
+    }
+
+    const auto authorization = authorizeHandler_(request, auth::AuthorizationPolicy::Scanner);
+    if (authorization.status == EndpointAuthorizationStatus::Unauthorized) {
+        return jsonResponse(401, R"({"error":"unauthorized"})");
+    }
+    if (authorization.status == EndpointAuthorizationStatus::Forbidden) {
+        return jsonResponse(403, R"({"error":"forbidden"})");
+    }
+
     if (!checkInHandler_) {
         return jsonResponse(
             503,
@@ -95,11 +100,22 @@ HttpResponse QrRoutes::handleCheckIn(const HttpRequest& request) const {
         );
     }
 
+    const auto body = nlohmann::json::parse(request.body, nullptr, false);
+    if (body.is_discarded() || !body.is_object()) {
+        return jsonResponse(400, R"({"accepted":false,"status":"invalid_request"})");
+    }
+
+    const auto stringField = [&body](const char* name) {
+        return body.contains(name) && body[name].is_string()
+            ? body[name].get<std::string>()
+            : std::string{};
+    };
+
     qr::QrCheckInCommand command{};
-    command.employeeId = readJsonStringField(request.body, "employeeId").value_or("");
-    command.zoneId = readJsonStringField(request.body, "zoneId").value_or("");
-    command.scannedByUserId = readJsonStringField(request.body, "scannedByUserId").value_or("");
-    command.cameraId = readJsonStringField(request.body, "cameraId").value_or("");
+    command.employeeId = stringField("employeeId");
+    command.zoneId = stringField("zoneId");
+    command.cameraId = stringField("cameraId");
+    command.scannedByUserId = authorization.principal->userId;
 
     return qrResultResponse(checkInHandler_(command));
 }

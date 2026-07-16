@@ -1,5 +1,4 @@
 #include <cassert>
-#include <stdexcept>
 #include <string>
 
 #include <bsoncxx/builder/basic/document.hpp>
@@ -17,127 +16,115 @@ bsoncxx::document::value appUserDocument(
     std::string userId = "APP-SCANNER-001",
     std::string username = "scanner",
     std::string role = "scanner",
-    std::string status = "active"
+    std::string status = "active",
+    std::string passwordHash = "test-hash-placeholder",
+    std::string employeeId = {}
 ) {
     bsoncxx::builder::basic::document document;
     document.append(
         bsoncxx::builder::basic::kvp("userId", userId),
         bsoncxx::builder::basic::kvp("username", username),
         bsoncxx::builder::basic::kvp("role", role),
-        bsoncxx::builder::basic::kvp("status", status)
+        bsoncxx::builder::basic::kvp("status", status),
+        bsoncxx::builder::basic::kvp("passwordHash", passwordHash)
     );
+    if (!employeeId.empty()) {
+        document.append(bsoncxx::builder::basic::kvp("employeeId", employeeId));
+    }
     return document.extract();
 }
 
-void mapsScannerUser() {
-    const auto document = appUserDocument();
+void mapsScannerUserWithoutEmployee() {
+    const auto mapped = mongodb::mapAppUserDocument(appUserDocument().view());
 
-    const auto user = mongodb::mapAppUserDocument(document.view());
-
-    assert(user.userId == "APP-SCANNER-001");
-    assert(user.username == "scanner");
-    assert(user.role == domain::AppUserRole::Scanner);
-    assert(user.status == domain::AppUserStatus::Active);
+    assert(mapped.has_value());
+    assert(mapped->userId == "APP-SCANNER-001");
+    assert(mapped->username == "scanner");
+    assert(mapped->passwordHash == "test-hash-placeholder");
+    assert(mapped->employeeId.empty());
+    assert(mapped->role == domain::AppUserRole::Scanner);
+    assert(mapped->status == domain::AppUserStatus::Active);
 }
 
-void mapsEverySupportedRole() {
-    const auto managerDocument = appUserDocument(
-        "APP-MANAGER-001",
-        "manager",
-        "manager"
+void mapsWorkerWithEmployeeLink() {
+    const auto mapped = mongodb::mapAppUserDocument(appUserDocument(
+        "APP-WORKER-001", "worker", "worker", "active",
+        "test-hash-placeholder", "EMP-001"
+    ).view());
+
+    assert(mapped.has_value());
+    assert(mapped->role == domain::AppUserRole::Worker);
+    assert(mapped->employeeId == "EMP-001");
+}
+
+void mapsManagerAdminAndInactiveStatus() {
+    const auto manager = mongodb::mapAppUserDocument(
+        appUserDocument("APP-MANAGER-001", "manager", "manager").view()
     );
-    const auto adminDocument = appUserDocument(
-        "APP-ADMIN-001",
-        "admin",
-        "admin"
+    const auto admin = mongodb::mapAppUserDocument(
+        appUserDocument("APP-ADMIN-001", "admin", "admin").view()
     );
+    const auto inactive = mongodb::mapAppUserDocument(appUserDocument(
+        "APP-SCANNER-002", "inactive-scanner", "scanner", "inactive"
+    ).view());
 
-    const auto manager = mongodb::mapAppUserDocument(managerDocument.view());
-    const auto admin = mongodb::mapAppUserDocument(adminDocument.view());
-
-    assert(manager.role == domain::AppUserRole::Manager);
-    assert(admin.role == domain::AppUserRole::Admin);
+    assert(manager && manager->role == domain::AppUserRole::Manager);
+    assert(admin && admin->role == domain::AppUserRole::Admin);
+    assert(inactive && inactive->status == domain::AppUserStatus::Inactive);
 }
 
-void mapsInactiveStatus() {
-    const auto document = appUserDocument(
-        "APP-SCANNER-002",
-        "inactive-scanner",
-        "scanner",
-        "inactive"
+void malformedDocumentsFailClosed() {
+    const auto invalidRole = mongodb::mapAppUserDocument(
+        appUserDocument("U1", "invalid-role", "operator").view()
     );
-
-    const auto user = mongodb::mapAppUserDocument(document.view());
-
-    assert(user.status == domain::AppUserStatus::Inactive);
-}
-
-template <typename Action>
-void assertThrows(Action action) {
-    try {
-        action();
-    } catch (const std::runtime_error&) {
-        return;
-    }
-
-    assert(false && "Expected MongoDB app user mapping to throw.");
-}
-
-void rejectsInvalidRole() {
-    const auto document = appUserDocument(
-        "APP-UNKNOWN-001",
-        "unknown-role",
-        "operator"
+    const auto invalidStatus = mongodb::mapAppUserDocument(
+        appUserDocument("U2", "invalid-status", "scanner", "blocked").view()
+    );
+    const auto emptyUserId = mongodb::mapAppUserDocument(
+        appUserDocument("", "scanner").view()
+    );
+    const auto missingHash = mongodb::mapAppUserDocument(
+        appUserDocument("U3", "missing-hash", "scanner", "active", "").view()
+    );
+    const auto unlinkedWorker = mongodb::mapAppUserDocument(
+        appUserDocument("U4", "unlinked-worker", "worker").view()
     );
 
-    assertThrows([&document] {
-        mongodb::mapAppUserDocument(document.view());
-    });
-}
-
-void rejectsInvalidStatus() {
-    const auto document = appUserDocument(
-        "APP-SCANNER-003",
-        "invalid-status",
-        "scanner",
-        "blocked"
-    );
-
-    assertThrows([&document] {
-        mongodb::mapAppUserDocument(document.view());
-    });
-}
-
-void rejectsMissingRequiredField() {
-    bsoncxx::builder::basic::document document;
-    document.append(
-        bsoncxx::builder::basic::kvp("userId", "APP-SCANNER-004"),
+    bsoncxx::builder::basic::document missingRoleDocument;
+    missingRoleDocument.append(
+        bsoncxx::builder::basic::kvp("userId", "U5"),
         bsoncxx::builder::basic::kvp("username", "missing-role"),
-        bsoncxx::builder::basic::kvp("status", "active")
+        bsoncxx::builder::basic::kvp("status", "active"),
+        bsoncxx::builder::basic::kvp("passwordHash", "test-hash-placeholder")
     );
-    const auto value = document.extract();
+    const auto missingRoleValue = missingRoleDocument.extract();
+    const auto missingRole = mongodb::mapAppUserDocument(missingRoleValue.view());
 
-    assertThrows([&value] {
-        mongodb::mapAppUserDocument(value.view());
-    });
-}
+    bsoncxx::builder::basic::document wrongTypeDocument;
+    wrongTypeDocument.append(
+        bsoncxx::builder::basic::kvp("userId", 42),
+        bsoncxx::builder::basic::kvp("username", "wrong-type"),
+        bsoncxx::builder::basic::kvp("role", "scanner"),
+        bsoncxx::builder::basic::kvp("status", "active"),
+        bsoncxx::builder::basic::kvp("passwordHash", "test-hash-placeholder")
+    );
+    const auto wrongTypeValue = wrongTypeDocument.extract();
+    const auto wrongType = mongodb::mapAppUserDocument(wrongTypeValue.view());
 
-void rejectsEmptyRequiredField() {
-    const auto document = appUserDocument("", "scanner");
-
-    assertThrows([&document] {
-        mongodb::mapAppUserDocument(document.view());
-    });
+    assert(!invalidRole);
+    assert(!invalidStatus);
+    assert(!emptyUserId);
+    assert(!missingHash);
+    assert(!unlinkedWorker);
+    assert(!missingRole);
+    assert(!wrongType);
 }
 
 }
 
 int main() {
-    mapsScannerUser();
-    mapsEverySupportedRole();
-    mapsInactiveStatus();
-    rejectsInvalidRole();
-    rejectsInvalidStatus();
-    rejectsMissingRequiredField();
-    rejectsEmptyRequiredField();
+    mapsScannerUserWithoutEmployee();
+    mapsWorkerWithEmployeeLink();
+    mapsManagerAdminAndInactiveStatus();
+    malformedDocumentsFailClosed();
 }

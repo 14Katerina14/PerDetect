@@ -1,7 +1,12 @@
 find_package(bsoncxx CONFIG REQUIRED)
 find_package(mongocxx CONFIG REQUIRED)
+find_package(jwt-cpp CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(unofficial-sodium CONFIG REQUIRED)
 
 add_library(SecureZone.Infrastructure
+    src/auth/JwtAccessTokenService.cpp
+    src/auth/SodiumPasswordVerifier.cpp
     src/mongodb/MongoDbClient.cpp
     src/mongodb/MongoDocumentMappers.cpp
     src/mongodb/MongoRepositoryProvider.cpp
@@ -32,6 +37,9 @@ target_include_directories(SecureZone.Infrastructure
 target_link_libraries(SecureZone.Infrastructure
     PUBLIC
         SecureZoneCore
+        jwt-cpp::jwt-cpp
+        nlohmann_json::nlohmann_json
+        unofficial-sodium::sodium
         $<IF:$<TARGET_EXISTS:mongo::bsoncxx_static>,mongo::bsoncxx_static,mongo::bsoncxx_shared>
         $<IF:$<TARGET_EXISTS:mongo::mongocxx_static>,mongo::mongocxx_static,mongo::mongocxx_shared>
 )
@@ -60,6 +68,24 @@ set_tests_properties(
 
 securezone_copy_mongodb_runtime(MongoAppUserMapperTests)
 securezone_set_mongodb_test_runtime(MongoAppUserMapperTests)
+
+add_executable(
+    AuthenticationInfrastructureTests
+    tests/auth/AuthenticationInfrastructureTests.cpp
+)
+target_link_libraries(
+    AuthenticationInfrastructureTests
+    PRIVATE
+        SecureZone.Infrastructure
+)
+add_test(NAME AuthenticationInfrastructureTests COMMAND AuthenticationInfrastructureTests)
+set_tests_properties(
+    AuthenticationInfrastructureTests
+    PROPERTIES
+        LABELS "auth;unit"
+)
+securezone_copy_mongodb_runtime(AuthenticationInfrastructureTests)
+securezone_set_mongodb_test_runtime(AuthenticationInfrastructureTests)
 
 add_executable(
     MongoDomainMapperTests

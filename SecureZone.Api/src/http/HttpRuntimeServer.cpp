@@ -12,6 +12,7 @@ HttpRequest toApiRequest(const httplib::Request& request) {
     result.method = request.method;
     result.path = request.path;
     result.body = request.body;
+    result.remoteAddress = request.remote_addr;
 
     for (const auto& header : request.headers) {
         result.headers.emplace(header.first, header.second);
@@ -34,6 +35,7 @@ bool runHttpRuntimeServer(const ApiApplication& application) {
     };
 
     server.Get("/health", handle);
+    server.Post("/api/auth/login", handle);
     server.Post("/api/qr/check-in", handle);
     server.Post("/api/xprotect/line-crossing", handle);
     server.Post("/api/xprotect/object-observations", handle);
