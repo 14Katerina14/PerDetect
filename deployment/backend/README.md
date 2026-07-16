@@ -54,5 +54,6 @@ The image starts `/app/SecureZone.Api` and accepts these environment variables:
 | `SECUREZONE_MONGO_DATABASE` | `securezone` | MongoDB database name |
 | `SECUREZONE_XPROTECT_API_KEY` | none | Shared key accepted from the XProtect plug-in |
 | `SECUREZONE_QR_PRESENCE_MINUTES` | `2` | QR presence validity duration |
+| `SECUREZONE_UNIDENTIFIED_GRACE_SECONDS` | `120` | Time allowed to bind a visible Human object to a QR identity |
 
 Secrets are runtime environment values. They are not copied into the image.

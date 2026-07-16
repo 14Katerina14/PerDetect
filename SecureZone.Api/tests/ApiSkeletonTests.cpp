@@ -734,7 +734,15 @@ void cameraObjectObservationRouteForwardsIdentityEvidence() {
                 assert(observation.cameraId == "CAM-001");
                 assert(observation.objectId == "OBJECT-42");
                 assert(observation.objectType == "Human");
-                return true;
+                return securezone::identity::UnidentifiedPersonWatchdogResult{
+                    true,
+                    "processed",
+                    "pending_identity",
+                    "SAFE-001",
+                    "The QR identity grace period is still active.",
+                    "IDENTITY-CAM-001-OBJECT-42",
+                    false
+                };
             }
         }
     };
@@ -747,14 +755,17 @@ void cameraObjectObservationRouteForwardsIdentityEvidence() {
     });
 
     assert(called);
-    assert(response.statusCode == 202);
-    assert(response.body.find("observed") != std::string::npos);
+    assert(response.statusCode == 200);
+    assert(response.body.find("pending_identity") != std::string::npos);
+    assert(response.body.find("SAFE-001") != std::string::npos);
 }
 
 void cameraObjectObservationRouteRejectsIncompleteEvidence() {
     ApiServer server{
         {},
-        ApiRouteHandlers{{}, {}, [](const securezone::identity::CameraObjectObservation&) { return true; }}
+        ApiRouteHandlers{{}, {}, [](const securezone::identity::CameraObjectObservation&) {
+            return securezone::identity::UnidentifiedPersonWatchdogResult{};
+        }}
     };
 
     const auto response = server.handle({
@@ -766,6 +777,36 @@ void cameraObjectObservationRouteRejectsIncompleteEvidence() {
 
     assert(response.statusCode == 400);
     assert(response.body.find("invalid_request") != std::string::npos);
+}
+
+void cameraObjectObservationRouteForwardsLostStatus() {
+    bool lost = false;
+    ApiServer server{
+        {},
+        ApiRouteHandlers{
+            {},
+            {},
+            [&lost](const securezone::identity::CameraObjectObservation& observation) {
+                lost = observation.status
+                    == securezone::identity::CameraObjectObservationStatus::Lost;
+                return securezone::identity::UnidentifiedPersonWatchdogResult{
+                    true, "processed", "cleared", "SAFE-001", "Person left.",
+                    "IDENTITY-CAM-001-OBJECT-42", false
+                };
+            }
+        }
+    };
+
+    const auto response = server.handle({
+        "POST",
+        "/api/xprotect/object-observations",
+        R"({"cameraId":"CAM-001","objectId":"OBJECT-42","objectType":"Human","observedAt":"2026-07-16T00:32:10Z","status":"lost"})",
+        {}
+    });
+
+    assert(lost);
+    assert(response.statusCode == 200);
+    assert(response.body.find(R"("decision":"cleared")") != std::string::npos);
 }
 
 }
@@ -801,4 +842,5 @@ int main() {
     runtimeCompositionMapsXProtectEventToAllowedWithActivePresence();
     cameraObjectObservationRouteForwardsIdentityEvidence();
     cameraObjectObservationRouteRejectsIncompleteEvidence();
+    cameraObjectObservationRouteForwardsLostStatus();
 }

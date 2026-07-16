@@ -40,6 +40,12 @@ ApiSettings loadApiSettingsFromEnvironment() {
     settings.qrPresenceDuration = std::chrono::minutes{
         envInt("SECUREZONE_QR_PRESENCE_MINUTES", static_cast<int>(settings.qrPresenceDuration.count()))
     };
+    settings.unidentifiedIdentityGracePeriod = std::chrono::seconds{
+        envInt(
+            "SECUREZONE_UNIDENTIFIED_GRACE_SECONDS",
+            static_cast<int>(settings.unidentifiedIdentityGracePeriod.count())
+        )
+    };
     return settings;
 }
 
