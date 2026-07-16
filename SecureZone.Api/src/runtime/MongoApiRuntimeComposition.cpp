@@ -13,6 +13,8 @@
 #include "securezone/identity/CameraIdentityService.h"
 #include "securezone/identity/UnidentifiedPersonWatchdog.h"
 #include "securezone/qr/QrCheckInService.h"
+#include "securezone/query/ActiveAlarmQueryService.h"
+#include "securezone/query/RecentAlarmQueryService.h"
 #include "securezone/xprotect/XProtectLineCrossingService.h"
 #include "securezone/xprotect/XProtectPolicyAlarmService.h"
 
@@ -85,6 +87,8 @@ struct MongoApiRuntimeComposition::State {
               this->config.apiRuntime.qrPresenceDuration
           },
           pushNotificationService{pushSubscriptions, pushDeliveries},
+          activeAlarmQuery{alarms, employees, zones, machines},
+          recentAlarmQuery{alarms, employees, zones, machines},
           unidentifiedPersonWatchdog{
               cameraIdentityService,
               cameraObjectTracks,
@@ -92,6 +96,12 @@ struct MongoApiRuntimeComposition::State {
               alarms,
               [this](const domain::Alarm& alarm) {
                   pushNotificationService.queueAlarmNotifications(
+                      alarm,
+                      std::chrono::system_clock::now()
+                  );
+              },
+              [this](const domain::Alarm& alarm) {
+                  pushNotificationService.queueAlarmResolvedNotifications(
                       alarm,
                       std::chrono::system_clock::now()
                   );
@@ -176,6 +186,8 @@ struct MongoApiRuntimeComposition::State {
     presence::PresenceSessionService presenceService;
     qr::QrCheckInService qrService;
     notification::PushNotificationService pushNotificationService;
+    query::ActiveAlarmQueryService activeAlarmQuery;
+    query::RecentAlarmQueryService recentAlarmQuery;
     identity::UnidentifiedPersonWatchdog unidentifiedPersonWatchdog;
     xprotect::XProtectPolicyAlarmService policyAlarmService;
     xprotect::XProtectLineCrossingService xprotectService;
@@ -199,7 +211,23 @@ ApiRouteHandlers MongoApiRuntimeComposition::createRouteHandlers() const {
         createXProtectLineCrossingHandler(),
         createCameraObjectObservationHandler(),
         createLoginHandler(),
-        createAuthorizationHandler()
+        createAuthorizationHandler(),
+        createActiveAlarmsHandler(),
+        createRecentAlarmsHandler()
+    };
+}
+
+AlarmRoutes::ListHandler MongoApiRuntimeComposition::createActiveAlarmsHandler() const {
+    const auto state = state_;
+    return [state] {
+        return state->activeAlarmQuery.list();
+    };
+}
+
+AlarmRoutes::ListHandler MongoApiRuntimeComposition::createRecentAlarmsHandler() const {
+    const auto state = state_;
+    return [state] {
+        return state->recentAlarmQuery.list();
     };
 }
 

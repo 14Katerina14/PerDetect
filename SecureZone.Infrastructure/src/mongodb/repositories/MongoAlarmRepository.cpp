@@ -189,6 +189,31 @@ std::vector<domain::Alarm> MongoAlarmRepository::findActive(
     return alarms;
 }
 
+std::vector<domain::Alarm> MongoAlarmRepository::findRecent(
+    std::size_t limit,
+    const std::optional<std::string>& zoneId
+) const {
+    bsoncxx::builder::basic::document filter;
+    if (zoneId.has_value() && !zoneId->empty()) {
+        filter.append(bsoncxx::builder::basic::kvp(ZoneIdField, *zoneId));
+    }
+
+    mongocxx::options::find options;
+    options.sort(bsoncxx::builder::basic::make_document(
+        bsoncxx::builder::basic::kvp("enteredAt", -1)
+    ));
+    options.limit(static_cast<std::int64_t>(limit));
+
+    std::vector<domain::Alarm> alarms;
+    for (const auto& document : alarmsCollection_.find(filter.view(), options)) {
+        try {
+            alarms.push_back(mapAlarmDocument(document));
+        } catch (const std::exception&) {
+        }
+    }
+    return alarms;
+}
+
 void MongoAlarmRepository::create(const domain::Alarm& alarm) {
     auto document = toAlarmDocument(alarm);
     alarmsCollection_.insert_one(document.view());

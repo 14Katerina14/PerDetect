@@ -104,6 +104,21 @@ alone. The runtime flow is:
 Do not omit `cameraId` from QR requests or `cameraId`/`objectId` from
 LineCrossing events. They are required identity evidence.
 
+## Alarm read endpoints
+
+The mobile manager/admin view can read alarms with a valid Bearer JWT:
+
+```text
+GET /api/alarms/active
+GET /api/alarms/recent
+```
+
+`active` returns up to 50 active or acknowledged alarms. `recent` returns up
+to 50 alarms across the complete lifecycle, newest first, including resolved
+alarms. Both responses include employee and zone names when available, the
+violation reason, timestamps, and `stillInside`. Scanner and worker accounts
+receive `403`; missing or invalid credentials receive `401`.
+
 ## Run the full local event injector
 
 The PowerShell injector creates temporary, isolated records named `SMOKE-*`
@@ -121,11 +136,13 @@ verifies:
    and returns a non-empty `bindingId`.
 6. The bound worker enters a forbidden zone and the real policy engine returns
    `violation` because the worker role is not allowed.
-7. MongoDB contains one active alarm and one pending manager notification.
+7. MongoDB contains one active alarm and one pending manager notification,
+   and the manager JWT can read it through `/api/alarms/active`.
 8. Replaying the same XProtect `eventId` is idempotent and creates no duplicate
    alarm or notification.
-9. The worker exits, the API returns `cleared`, the alarm is resolved, and a
-   separate manager clear notification is queued.
+9. The worker exits, the API returns `cleared`, the alarm is resolved, a
+   separate manager clear notification is queued, and `/api/alarms/recent`
+   exposes the resolved lifecycle state.
 10. Temporary employees, app users, subscriptions, machines, zones, policies,
     sessions, tracks, bindings, alarms, and notifications are removed.
 

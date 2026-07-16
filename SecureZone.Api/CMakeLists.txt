@@ -21,6 +21,7 @@ add_library(SecureZoneApi
     src/handlers/XProtectLineCrossingHandler.cpp
     src/http/Router.cpp
     src/routes/HealthRoutes.cpp
+    src/routes/AlarmRoutes.cpp
     src/routes/AuthRoutes.cpp
     src/routes/CameraObjectRoutes.cpp
     src/routes/QrRoutes.cpp
@@ -74,8 +75,12 @@ add_executable(AuthSecurityTests tests/AuthSecurityTests.cpp)
 target_link_libraries(AuthSecurityTests PRIVATE SecureZoneApi)
 add_test(NAME AuthSecurityTests COMMAND AuthSecurityTests)
 
+add_executable(AlarmRoutesTests tests/AlarmRoutesTests.cpp)
+target_link_libraries(AlarmRoutesTests PRIVATE SecureZoneApi)
+add_test(NAME AlarmRoutesTests COMMAND AlarmRoutesTests)
+
 if(TARGET SecureZone.Infrastructure AND WIN32)
-    foreach(securezone_runtime_target SecureZone.Api ApiSkeletonTests AuthSecurityTests)
+    foreach(securezone_runtime_target SecureZone.Api ApiSkeletonTests AuthSecurityTests AlarmRoutesTests)
         securezone_copy_mongodb_runtime(${securezone_runtime_target})
     endforeach()
     securezone_set_mongodb_test_runtime(ApiSkeletonTests)

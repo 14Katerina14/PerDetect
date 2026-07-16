@@ -24,6 +24,8 @@ public:
     EndpointAuthorizer::Handler createAuthorizationHandler() const;
     XProtectEventRoutes::LineCrossingHandler createXProtectLineCrossingHandler() const;
     CameraObjectRoutes::ObservationHandler createCameraObjectObservationHandler() const;
+    AlarmRoutes::ListHandler createActiveAlarmsHandler() const;
+    AlarmRoutes::ListHandler createRecentAlarmsHandler() const;
 
 private:
     struct State;

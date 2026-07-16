@@ -62,13 +62,30 @@ UnidentifiedPersonWatchdog::UnidentifiedPersonWatchdog(
     repository::IZoneRepository& zoneRepository,
     repository::IAlarmRepository& alarmRepository,
     AlarmCreatedNotifier alarmCreatedNotifier,
+    AlarmResolvedNotifier alarmResolvedNotifier,
     std::chrono::seconds identityGracePeriod
 ) : identityService_{identityService},
     trackRepository_{trackRepository},
     zoneRepository_{zoneRepository},
     alarmRepository_{alarmRepository},
     alarmCreatedNotifier_{std::move(alarmCreatedNotifier)},
+    alarmResolvedNotifier_{std::move(alarmResolvedNotifier)},
     identityGracePeriod_{identityGracePeriod} {
+}
+
+void UnidentifiedPersonWatchdog::resolveAlarm(
+    const domain::Alarm& alarm,
+    Clock::time_point resolvedAt
+) {
+    alarmRepository_.resolve(alarm.alarmId, resolvedAt);
+    if (!alarmResolvedNotifier_) return;
+
+    auto resolvedAlarm = alarm;
+    resolvedAlarm.status = domain::AlarmStatus::Resolved;
+    resolvedAlarm.stillInside = false;
+    resolvedAlarm.exitedAt = resolvedAt;
+    resolvedAlarm.resolvedAt = resolvedAt;
+    alarmResolvedNotifier_(resolvedAlarm);
 }
 
 UnidentifiedPersonWatchdogResult UnidentifiedPersonWatchdog::observe(
@@ -103,7 +120,7 @@ UnidentifiedPersonWatchdogResult UnidentifiedPersonWatchdog::observe(
                 "The camera object left without an active unidentified-person alarm.");
         }
 
-        alarmRepository_.resolve(activeAlarm->alarmId, observation.observedAt);
+        resolveAlarm(*activeAlarm, observation.observedAt);
         if (alarmRepository_.countActiveByZone(zone->zoneId) == 0U) {
             return result(observation, true, "processed", "cleared", zone->zoneId,
                 "The unidentified person left and no active violations remain in the zone.");
@@ -129,7 +146,7 @@ UnidentifiedPersonWatchdogResult UnidentifiedPersonWatchdog::observe(
     );
     if (binding.has_value()) {
         if (activeAlarm.has_value()) {
-            alarmRepository_.resolve(activeAlarm->alarmId, observation.observedAt);
+            resolveAlarm(*activeAlarm, observation.observedAt);
             if (alarmRepository_.countActiveByZone(zone->zoneId) == 0U) {
                 return result(observation, true, "processed", "cleared", zone->zoneId,
                     "The camera object was identified and no active violations remain.");

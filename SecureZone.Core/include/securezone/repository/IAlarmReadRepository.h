@@ -17,6 +17,11 @@ public:
         std::size_t limit,
         const std::optional<std::string>& zoneId = std::nullopt
     ) const = 0;
+
+    virtual std::vector<domain::Alarm> findRecent(
+        std::size_t limit,
+        const std::optional<std::string>& zoneId = std::nullopt
+    ) const = 0;
 };
 
 }

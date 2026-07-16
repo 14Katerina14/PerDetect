@@ -30,6 +30,11 @@ public:
         const std::optional<std::string>& zoneId = std::nullopt
     ) const override;
 
+    std::vector<domain::Alarm> findRecent(
+        std::size_t limit,
+        const std::optional<std::string>& zoneId = std::nullopt
+    ) const override;
+
     void create(const domain::Alarm& alarm) override;
 
     void resolve(

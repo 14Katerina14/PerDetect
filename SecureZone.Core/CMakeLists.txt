@@ -19,7 +19,8 @@ add_library(SecureZoneCore
     src/notification/PushNotificationWorker.cpp
     src/presence/PresenceSessionService.cpp
     src/qr/QrCheckInService.cpp
-    src/query/ActiveAlarmQueryService.cpp
+      src/query/ActiveAlarmQueryService.cpp
+      src/query/RecentAlarmQueryService.cpp
     src/query/ActivePresenceQueryService.cpp
     src/query/ZoneStatusQueryService.cpp
     src/webhook/WebhookNotificationService.cpp

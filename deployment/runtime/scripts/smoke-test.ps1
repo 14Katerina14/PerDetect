@@ -67,7 +67,9 @@ function Assert-NonEmptyField {
 }
 
 function Get-UtcTimestamp {
-    return [DateTime]::UtcNow.ToString(
+    param([int]$OffsetSeconds = 0)
+
+    return [DateTime]::UtcNow.AddSeconds($OffsetSeconds).ToString(
         "yyyy-MM-dd'T'HH:mm:ss.fff'Z'",
         [Globalization.CultureInfo]::InvariantCulture
     )
@@ -99,6 +101,17 @@ function Invoke-ScannerProvisioning {
         --user-id SMOKE-SCANNER --username smoke-scanner --role scanner | Out-Null
     if ($LASTEXITCODE -ne 0) {
         throw "Scanner application-user provisioning failed."
+    }
+}
+
+function Invoke-ManagerProvisioning {
+    param([Parameter(Mandatory)][string]$Password)
+
+    $Password | & docker compose --env-file $envFile -f $composeFile `
+        exec -T securezone-api /app/SecureZone.ProvisionUser `
+        --user-id SMOKE-MANAGER --username smoke-manager --role manager | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Manager application-user provisioning failed."
     }
 }
 
@@ -192,12 +205,22 @@ try {
     $scannerHeaders = @{ Authorization = "Bearer $($loginResult.accessToken)" }
     $scannerPassword = $null
 
+    $managerPassword = "Smoke-$([guid]::NewGuid().ToString('N'))"
+    Invoke-ManagerProvisioning -Password $managerPassword
+    $managerLoginBody = @{ username = "smoke-manager"; password = $managerPassword } |
+        ConvertTo-Json -Compress
+    $managerLogin = Invoke-RestMethod -Method Post -Uri "$baseUri/api/auth/login" `
+        -ContentType "application/json" -Body $managerLoginBody
+    Assert-NonEmptyField $managerLogin "accessToken" "Manager login"
+    $managerHeaders = @{ Authorization = "Bearer $($managerLogin.accessToken)" }
+    $managerPassword = $null
+
     Write-Host "[3/10] Inject recent Human camera observation"
     $observation = @{
         cameraId = $cameraId
         objectId = $workerObjectId
         objectType = "Human"
-        observedAt = Get-UtcTimestamp
+        observedAt = Get-UtcTimestamp -OffsetSeconds -1
     } | ConvertTo-Json -Compress
     $observationResult = Invoke-RestMethod -Method Post `
         -Uri "$baseUri/api/xprotect/object-observations" -Headers $headers `
@@ -239,6 +262,11 @@ try {
 
     Write-Host "[6/10] Verify active MongoDB alarm and manager notification"
     Invoke-MongoScript -Script $activeAlarmAssertion | Out-Null
+    $activeAlarms = Invoke-RestMethod -Method Get -Uri "$baseUri/api/alarms/active" `
+        -Headers $managerHeaders
+    Assert-FieldEquals $activeAlarms "count" 1 "Active alarms endpoint"
+    Assert-FieldEquals $activeAlarms.alarms[0] "status" "active" "Active alarms endpoint"
+    Assert-FieldEquals $activeAlarms.alarms[0] "employeeId" "SMOKE-EMPLOYEE" "Active alarms endpoint"
 
     Write-Host "[7/10] Replay same event -> duplicate without a second alarm"
     $duplicateDecision = Invoke-RestMethod -Method Post `
@@ -265,6 +293,11 @@ try {
 
     Write-Host "[9/10] Verify resolved alarm and manager clear notification"
     Invoke-MongoScript -Script $resolvedAlarmAssertion | Out-Null
+    $recentAlarms = Invoke-RestMethod -Method Get -Uri "$baseUri/api/alarms/recent" `
+        -Headers $managerHeaders
+    Assert-FieldEquals $recentAlarms "count" 1 "Recent alarms endpoint"
+    Assert-FieldEquals $recentAlarms.alarms[0] "status" "resolved" "Recent alarms endpoint"
+    Assert-FieldEquals $recentAlarms.alarms[0] "stillInside" $false "Recent alarms endpoint"
 
     $flowSucceeded = $true
 }

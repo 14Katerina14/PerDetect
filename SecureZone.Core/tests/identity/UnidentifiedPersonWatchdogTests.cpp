@@ -168,13 +168,20 @@ struct Fixture {
     ZoneRepository zones;
     AlarmRepository alarms;
     identity::CameraIdentityService identities{tracks, bindings};
-    int notifications{};
+    int createdNotifications{};
+    int resolvedNotifications{};
     identity::UnidentifiedPersonWatchdog watchdog{
         identities,
         tracks,
         zones,
         alarms,
-        [this](const domain::Alarm&) { ++notifications; },
+        [this](const domain::Alarm&) { ++createdNotifications; },
+        [this](const domain::Alarm& alarm) {
+            assert(alarm.status == domain::AlarmStatus::Resolved);
+            assert(!alarm.stillInside);
+            assert(alarm.resolvedAt.has_value());
+            ++resolvedNotifications;
+        },
         std::chrono::minutes{2}
     };
 };
@@ -187,7 +194,8 @@ void waitsForTwoMinuteIdentityGracePeriod() {
     assert(first.decision == "pending_identity");
     assert(pending.decision == "pending_identity");
     assert(fixture.alarms.alarms.empty());
-    assert(fixture.notifications == 0);
+    assert(fixture.createdNotifications == 0);
+    assert(fixture.resolvedNotifications == 0);
 }
 
 void createsOneAlarmAndQueuesOneSupervisorNotification() {
@@ -201,7 +209,8 @@ void createsOneAlarmAndQueuesOneSupervisorNotification() {
     assert(duplicate.decision == "violation_active");
     assert(duplicate.duplicate);
     assert(fixture.alarms.alarms.size() == 1);
-    assert(fixture.notifications == 1);
+    assert(fixture.createdNotifications == 1);
+    assert(fixture.resolvedNotifications == 0);
     assert(fixture.alarms.alarms.front().employeeId.empty());
 }
 
@@ -237,6 +246,7 @@ void leavingClearsTheLastUnknownIdentityAlarm() {
     assert(cleared.decision == "cleared");
     assert(fixture.alarms.alarms.front().status == domain::AlarmStatus::Resolved);
     assert(!fixture.alarms.alarms.front().stillInside);
+    assert(fixture.resolvedNotifications == 1);
 }
 
 void lateQrIdentificationClearsExistingAlarm() {
@@ -255,6 +265,7 @@ void lateQrIdentificationClearsExistingAlarm() {
     const auto cleared = fixture.watchdog.observe(observation(FirstSeen + std::chrono::seconds{130}));
     assert(cleared.decision == "cleared");
     assert(fixture.alarms.alarms.front().status == domain::AlarmStatus::Resolved);
+    assert(fixture.resolvedNotifications == 1);
 }
 
 }
