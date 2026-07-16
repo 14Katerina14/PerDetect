@@ -56,13 +56,19 @@ public:
     std::vector<domain::CameraObjectTrack> tracks;
 
 private:
-    auto findMutable(const std::string& cameraId, const std::string& objectId) {
+    std::vector<domain::CameraObjectTrack>::iterator findMutable(
+        const std::string& cameraId,
+        const std::string& objectId
+    ) {
         return std::find_if(tracks.begin(), tracks.end(), [&](const auto& track) {
             return track.cameraId == cameraId && track.objectId == objectId;
         });
     }
 
-    auto find(const std::string& cameraId, const std::string& objectId) const {
+    std::vector<domain::CameraObjectTrack>::const_iterator find(
+        const std::string& cameraId,
+        const std::string& objectId
+    ) const {
         return std::find_if(tracks.begin(), tracks.end(), [&](const auto& track) {
             return track.cameraId == cameraId && track.objectId == objectId;
         });
