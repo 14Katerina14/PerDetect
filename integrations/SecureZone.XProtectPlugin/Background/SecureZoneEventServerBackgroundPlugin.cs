@@ -14,6 +14,7 @@ namespace SecureZone.XProtectPlugin.Background
         private object eventReceiver;
         private SecureZoneDecisionClient decisionClient;
         private SecureZoneViolationEventPublisher violationPublisher;
+        private DecisionBridgeProcessor decisionProcessor;
         private RecentLineCrossingCache lineCrossingCache;
         private WiseAiMetadataListener metadataListener;
 
@@ -32,6 +33,10 @@ namespace SecureZone.XProtectPlugin.Background
             SecureZonePluginSettings settings = SecureZonePluginSettings.Load();
             decisionClient = new SecureZoneDecisionClient(settings);
             violationPublisher = new SecureZoneViolationEventPublisher();
+            decisionProcessor = new DecisionBridgeProcessor(
+                violationPublisher,
+                new MipDecisionBridgeLogger()
+            );
             lineCrossingCache = new RecentLineCrossingCache();
             metadataListener = new WiseAiMetadataListener(
                 decisionClient,
@@ -126,16 +131,11 @@ namespace SecureZone.XProtectPlugin.Background
             try
             {
                 SecureZoneDecisionResponse decision = await decisionClient.EvaluateAsync(snapshot).ConfigureAwait(false);
-                HandleDecision(snapshot, decision);
+                decisionProcessor.Process(snapshot, decision);
             }
             catch (Exception exception)
             {
-                EnvironmentManager.Instance.Log(
-                    true,
-                    "SecureZone.DecisionBridge",
-                    "SecureZone API decision failed for event '" + snapshot.EventId +
-                    "'. No confirmed violation event was raised. " + exception.Message
-                );
+                decisionProcessor.BackendFailure(snapshot, exception);
             }
         }
 
@@ -143,51 +143,7 @@ namespace SecureZone.XProtectPlugin.Background
             LineCrossingEventSnapshot snapshot,
             SecureZoneDecisionResponse decision)
         {
-            if (!decision.duplicate &&
-                    decision.accepted &&
-                    string.Equals(decision.decision, "violation", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (snapshot.Source == null)
-                    {
-                        EnvironmentManager.Instance.Log(
-                            true,
-                            "SecureZone.DecisionBridge",
-                            "Backend confirmed violation, but the XProtect event has no source. Event '" +
-                            snapshot.EventId + "' was not raised."
-                        );
-                        return;
-                    }
-
-                    violationPublisher.Publish(snapshot, decision);
-                    return;
-                }
-
-            if (!decision.duplicate &&
-                    decision.accepted &&
-                    string.Equals(decision.decision, "cleared", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (snapshot.Source == null)
-                    {
-                        EnvironmentManager.Instance.Log(
-                            true,
-                            "SecureZone.DecisionBridge",
-                            "Backend cleared the zone, but the XProtect event has no source. Event '" +
-                            snapshot.EventId + "' was not raised."
-                        );
-                        return;
-                    }
-
-                    violationPublisher.PublishCleared(snapshot, decision);
-                    return;
-                }
-
-            EnvironmentManager.Instance.Log(
-                false,
-                "SecureZone.DecisionBridge",
-                "No violation event raised for event '" + snapshot.EventId +
-                "'. Backend decision='" + (decision.decision ?? "none") +
-                "', status='" + (decision.status ?? "unknown") + "'."
-            );
+            decisionProcessor.Process(snapshot, decision);
         }
 
         private static bool IsWiseAiLineCrossing(string eventName, string eventType, string eventMessage)

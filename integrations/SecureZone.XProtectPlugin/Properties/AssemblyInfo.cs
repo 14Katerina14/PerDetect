@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.CompilerServices;
 
 [assembly: AssemblyTitle("SecureZone.XProtectPlugin")]
 [assembly: AssemblyDescription("SecureZone XProtect Event Server decision bridge")]
@@ -10,3 +11,4 @@ using System.Runtime.InteropServices;
 [assembly: Guid("4ed74afb-f668-419d-86d0-305653794f04")]
 [assembly: AssemblyVersion("2.0.0.0")]
 [assembly: AssemblyFileVersion("2.0.0.0")]
+[assembly: InternalsVisibleTo("SecureZone.XProtectPlugin.ContractTests")]

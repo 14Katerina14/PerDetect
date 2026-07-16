@@ -147,3 +147,26 @@ jobs:
       - name: Build SecureZone backend image
         run: |
           docker build --file deployment/backend/Dockerfile --tag securezone-api:ci .
+
+  xprotect-plugin-contract:
+    name: XProtect plug-in contract tests
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build plug-in contract tests
+        shell: pwsh
+        run: |
+          msbuild integrations/SecureZone.XProtectPlugin.ContractTests/SecureZone.XProtectPlugin.ContractTests.csproj `
+            /restore `
+            /p:Configuration=Release
+
+      - name: Run plug-in contract tests
+        shell: pwsh
+        run: |
+          & integrations/SecureZone.XProtectPlugin.ContractTests/bin/Release/SecureZone.XProtectPlugin.ContractTests.exe
