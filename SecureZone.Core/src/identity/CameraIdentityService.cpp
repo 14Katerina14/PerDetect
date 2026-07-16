@@ -27,6 +27,11 @@ bool CameraIdentityService::observe(const CameraObjectObservation& observation) 
         return false;
     }
 
+    if (observation.status == CameraObjectObservationStatus::Lost) {
+        tracks_.markLost(observation.cameraId, observation.objectId, observation.observedAt);
+        return true;
+    }
+
     domain::CameraObjectTrack track{};
     track.cameraId = observation.cameraId;
     track.objectId = observation.objectId;

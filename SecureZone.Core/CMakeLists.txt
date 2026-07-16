@@ -12,6 +12,7 @@ add_library(SecureZoneCore
     src/decision/DecisionEngine.cpp
     src/identity/RolePermissionService.cpp
     src/identity/CameraIdentityService.cpp
+    src/identity/UnidentifiedPersonWatchdog.cpp
     src/machine/MachineStatusService.cpp
     src/notification/PushNotificationService.cpp
     src/notification/PushNotificationWorker.cpp
@@ -43,6 +44,7 @@ set(SECUREZONE_CORE_TESTS
     CameraIdentityServiceTests
     PushNotificationTests
     ManagerReadModelTests
+    UnidentifiedPersonWatchdogTests
 )
 
 foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
@@ -62,6 +64,8 @@ foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
         set(test_source tests/notification/PushNotificationTests.cpp)
     elseif(test_name STREQUAL "ManagerReadModelTests")
         set(test_source tests/query/ManagerReadModelTests.cpp)
+    elseif(test_name STREQUAL "UnidentifiedPersonWatchdogTests")
+        set(test_source tests/identity/UnidentifiedPersonWatchdogTests.cpp)
     else()
         set(test_source tests/${test_name}.cpp)
     endif()

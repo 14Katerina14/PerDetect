@@ -29,6 +29,10 @@ public:
         const std::string& xprotectEventName
     ) const override;
 
+    std::optional<domain::Zone> findActiveSafeByCameraId(
+        const std::string& cameraId
+    ) const override;
+
     bool save(const domain::Zone& zone) override;
 
     std::vector<domain::Zone> findAll(

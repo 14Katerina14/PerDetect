@@ -107,6 +107,20 @@ std::optional<domain::Zone> MongoZoneRepository::findActiveByXProtectEventName(
     return mapZoneDocument(result->view());
 }
 
+std::optional<domain::Zone> MongoZoneRepository::findActiveSafeByCameraId(
+    const std::string& cameraId
+) const {
+    auto result = zonesCollection_.find_one(
+        bsoncxx::builder::basic::make_document(
+            bsoncxx::builder::basic::kvp("cameraId", cameraId),
+            bsoncxx::builder::basic::kvp("type", "safe"),
+            bsoncxx::builder::basic::kvp(StatusField, ActiveStatus)
+        )
+    );
+    if (!result) return std::nullopt;
+    return mapZoneDocument(result->view());
+}
+
 bool MongoZoneRepository::save(const domain::Zone& zone) {
     bsoncxx::builder::basic::document filter;
     filter.append(bsoncxx::builder::basic::kvp(ZoneIdField, zone.zoneId));

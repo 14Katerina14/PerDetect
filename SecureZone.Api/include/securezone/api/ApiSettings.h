@@ -12,6 +12,7 @@ struct ApiSettings {
     std::string mongoDatabaseName{"securezone"};
     std::string xprotectApiKey;
     std::chrono::minutes qrPresenceDuration{2};
+    std::chrono::seconds unidentifiedIdentityGracePeriod{120};
 };
 
 ApiSettings loadApiSettingsFromEnvironment();

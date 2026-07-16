@@ -11,6 +11,8 @@ namespace SecureZone.XProtectPlugin
         public Uri ObjectObservationEndpoint { get; private set; }
         public string ApiKey { get; private set; }
         public TimeSpan RequestTimeout { get; private set; }
+        public TimeSpan MetadataHeartbeat { get; private set; }
+        public TimeSpan MetadataLostAfter { get; private set; }
 
         public static SecureZonePluginSettings Load()
         {
@@ -22,12 +24,18 @@ namespace SecureZone.XProtectPlugin
                 throw new InvalidOperationException("SECUREZONE_API_URL must be an absolute HTTP or HTTPS URL.");
             }
 
+            int heartbeatSeconds = ReadPositiveInt("SECUREZONE_METADATA_HEARTBEAT_SECONDS", 5);
+            int lostAfterSeconds = ReadPositiveInt("SECUREZONE_METADATA_LOST_AFTER_SECONDS", 8);
+            if (lostAfterSeconds <= heartbeatSeconds) lostAfterSeconds = heartbeatSeconds + 3;
+
             return new SecureZonePluginSettings
             {
                 ApiEndpoint = endpoint,
                 ObjectObservationEndpoint = new Uri(endpoint, "/api/xprotect/object-observations"),
                 ApiKey = ReadEnvironmentVariable("SECUREZONE_XPROTECT_API_KEY", string.Empty),
-                RequestTimeout = TimeSpan.FromSeconds(ReadPositiveInt("SECUREZONE_API_TIMEOUT_SECONDS", DefaultTimeoutSeconds))
+                RequestTimeout = TimeSpan.FromSeconds(ReadPositiveInt("SECUREZONE_API_TIMEOUT_SECONDS", DefaultTimeoutSeconds)),
+                MetadataHeartbeat = TimeSpan.FromSeconds(heartbeatSeconds),
+                MetadataLostAfter = TimeSpan.FromSeconds(lostAfterSeconds)
             };
         }
 

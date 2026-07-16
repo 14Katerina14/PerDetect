@@ -10,11 +10,14 @@
 
 namespace securezone::identity {
 
+enum class CameraObjectObservationStatus { Active, Lost };
+
 struct CameraObjectObservation {
     std::string cameraId;
     std::string objectId;
     std::string objectType;
     std::chrono::system_clock::time_point observedAt{};
+    CameraObjectObservationStatus status{CameraObjectObservationStatus::Active};
 };
 
 struct CameraIdentityBindingRequest {
