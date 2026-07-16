@@ -1,12 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
 
-import { LoginScreen } from './src/screens/LoginScreen';
+import { QrAccessScreen } from './src/screens/QrAccessScreen';
 
 export default function App() {
   return (
     <>
       <StatusBar style="dark" />
-      <LoginScreen />
+      <QrAccessScreen />
     </>
   );
 }
