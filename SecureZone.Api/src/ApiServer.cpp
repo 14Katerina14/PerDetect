@@ -10,16 +10,17 @@ ApiServer::ApiServer(ApiSettings settings)
 
 ApiServer::ApiServer(ApiSettings settings, QrRoutes::CheckInHandler qrCheckInHandler)
     : settings_{std::move(settings)},
-      qrRoutes_{std::move(qrCheckInHandler)},
+      qrRoutes_{std::move(qrCheckInHandler), {}},
       xprotectEventRoutes_{{}, settings_.xprotectApiKey} {
     registerRoutes();
 }
 
 ApiServer::ApiServer(ApiSettings settings, ApiRouteHandlers handlers)
     : settings_{std::move(settings)},
-      qrRoutes_{std::move(handlers.qrCheckInHandler)},
-      xprotectEventRoutes_{std::move(handlers.lineCrossingHandler), settings_.xprotectApiKey},
-      cameraObjectRoutes_{std::move(handlers.cameraObjectObservationHandler), settings_.xprotectApiKey} {
+      authRoutes_{std::move(handlers.loginHandler)},
+      cameraObjectRoutes_{std::move(handlers.cameraObjectObservationHandler), settings_.xprotectApiKey},
+      qrRoutes_{std::move(handlers.qrCheckInHandler), std::move(handlers.authorizationHandler)},
+      xprotectEventRoutes_{std::move(handlers.lineCrossingHandler), settings_.xprotectApiKey} {
     registerRoutes();
 }
 
@@ -34,6 +35,10 @@ HttpResponse ApiServer::handle(const HttpRequest& request) const {
 void ApiServer::registerRoutes() {
     router_.get("/health", [this](const HttpRequest& request) {
         return healthRoutes_.handleHealth(request);
+    });
+
+    router_.post("/api/auth/login", [this](const HttpRequest& request) {
+        return authRoutes_.handleLogin(request);
     });
 
     router_.post("/api/qr/check-in", [this](const HttpRequest& request) {

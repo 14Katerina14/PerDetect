@@ -3,11 +3,12 @@
 FROM ubuntu:24.04 AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG VCPKG_COMMIT=3e169054dfb52ed75fa3159a81282db4b401ae03
+ARG VCPKG_COMMIT=d015e31e90838a4c9dfa3eed45979bc70d9357fc
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
         autoconf \
+        autoconf-archive \
         automake \
         build-essential \
         ca-certificates \
@@ -48,9 +49,11 @@ RUN cmake -S . -B /src/build \
         -DSECUREZONE_BUILD_MONGODB_TESTS=OFF \
         -DSECUREZONE_BUILD_MONGODB_INTEGRATION_TESTS=OFF \
         -DSECUREZONE_BUILD_HTTP_RUNTIME=ON \
-    && cmake --build /src/build --target SecureZone.Api --parallel 2 \
+    && cmake --build /src/build --target SecureZone.Api SecureZone.PasswordHash SecureZone.ProvisionUser --parallel 2 \
     && mkdir -p /opt/securezone \
-    && cp /src/build/SecureZone.Api/SecureZone.Api /opt/securezone/SecureZone.Api
+    && cp /src/build/SecureZone.Api/SecureZone.Api /opt/securezone/SecureZone.Api \
+    && cp /src/build/SecureZone.Tools/SecureZone.PasswordHash /opt/securezone/SecureZone.PasswordHash \
+    && cp /src/build/SecureZone.Tools/SecureZone.ProvisionUser /opt/securezone/SecureZone.ProvisionUser
 
 FROM ubuntu:24.04 AS runtime
 
@@ -69,11 +72,14 @@ RUN apt-get update \
 
 WORKDIR /app
 COPY --from=build --chown=securezone:securezone /opt/securezone/SecureZone.Api /app/SecureZone.Api
+COPY --from=build --chown=securezone:securezone /opt/securezone/SecureZone.PasswordHash /app/SecureZone.PasswordHash
+COPY --from=build --chown=securezone:securezone /opt/securezone/SecureZone.ProvisionUser /app/SecureZone.ProvisionUser
 
 ENV SECUREZONE_API_HOST=0.0.0.0 \
     SECUREZONE_API_PORT=8080 \
     SECUREZONE_MONGO_DATABASE=securezone \
     SECUREZONE_QR_PRESENCE_MINUTES=2 \
+    SECUREZONE_JWT_TTL_MINUTES=60 \
     SECUREZONE_UNIDENTIFIED_GRACE_SECONDS=120
 
 EXPOSE 8080

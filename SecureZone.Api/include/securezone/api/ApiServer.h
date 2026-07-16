@@ -5,6 +5,7 @@
 #include "securezone/api/http/HttpResponse.h"
 #include "securezone/api/http/Router.h"
 #include "securezone/api/routes/HealthRoutes.h"
+#include "securezone/api/routes/AuthRoutes.h"
 #include "securezone/api/routes/CameraObjectRoutes.h"
 #include "securezone/api/routes/QrRoutes.h"
 #include "securezone/api/routes/XProtectEventRoutes.h"
@@ -12,9 +13,11 @@
 namespace securezone::api {
 
 struct ApiRouteHandlers {
-    QrRoutes::CheckInHandler qrCheckInHandler;
-    XProtectEventRoutes::LineCrossingHandler lineCrossingHandler;
-    CameraObjectRoutes::ObservationHandler cameraObjectObservationHandler;
+    QrRoutes::CheckInHandler qrCheckInHandler{};
+    XProtectEventRoutes::LineCrossingHandler lineCrossingHandler{};
+    CameraObjectRoutes::ObservationHandler cameraObjectObservationHandler{};
+    AuthRoutes::LoginHandler loginHandler{};
+    EndpointAuthorizer::Handler authorizationHandler{};
 };
 
 class ApiServer {
@@ -32,6 +35,7 @@ private:
     ApiSettings settings_;
     Router router_;
     HealthRoutes healthRoutes_;
+    AuthRoutes authRoutes_;
     CameraObjectRoutes cameraObjectRoutes_;
     QrRoutes qrRoutes_;
     XProtectEventRoutes xprotectEventRoutes_;
