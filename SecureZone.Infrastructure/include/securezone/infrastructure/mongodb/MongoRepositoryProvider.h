@@ -7,6 +7,8 @@
 #include "securezone/infrastructure/mongodb/repositories/MongoEmployeeRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoMachineRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoPresenceSessionRepository.h"
+#include "securezone/infrastructure/mongodb/repositories/MongoPushNotificationDeliveryRepository.h"
+#include "securezone/infrastructure/mongodb/repositories/MongoPushSubscriptionRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoQrCheckinRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoWebhookTargetRepository.h"
 #include "securezone/infrastructure/mongodb/repositories/MongoZoneRepository.h"
@@ -30,6 +32,8 @@ public:
     repositories::MongoWebhookTargetRepository webhookTargetRepository();
     repositories::MongoCameraObjectTrackRepository cameraObjectTrackRepository();
     repositories::MongoTrackIdentityBindingRepository trackIdentityBindingRepository();
+    repositories::MongoPushSubscriptionRepository pushSubscriptionRepository();
+    repositories::MongoPushNotificationDeliveryRepository pushNotificationDeliveryRepository();
 
 private:
     MongoDbClient& client_;

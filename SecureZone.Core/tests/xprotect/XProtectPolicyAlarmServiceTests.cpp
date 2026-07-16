@@ -222,6 +222,27 @@ void repeatedEventDoesNotDuplicateAlarm() {
     assert(fixture.alarms.createCount == 1);
 }
 
+void notifiesOnlyWhenANewAlarmIsCreated() {
+    Fixture fixture;
+    fixture.employees.employee->roles = {"operator"};
+    std::vector<std::string> notifiedAlarmIds;
+    xprotect::XProtectPolicyAlarmService service{
+        fixture.employees,
+        fixture.policies,
+        fixture.machines,
+        fixture.alarms,
+        [&notifiedAlarmIds](const domain::Alarm& alarm) {
+            notifiedAlarmIds.push_back(alarm.alarmId);
+        }
+    };
+
+    service.evaluate(fixture.command, fixture.zone, fixture.binding);
+    service.evaluate(fixture.command, fixture.zone, fixture.binding);
+
+    assert(notifiedAlarmIds.size() == 1U);
+    assert(notifiedAlarmIds.front() == fixture.alarms.alarms.front().alarmId);
+}
+
 void lastViolatorExitClearsZone() {
     Fixture fixture;
     fixture.alarms.alarms.push_back(activeAlarm("CAM-001:42", "ALARM-001"));
@@ -254,6 +275,7 @@ int main() {
     deniedMachineStateCreatesViolation();
     allowedEmployeeDoesNotCreateAlarm();
     repeatedEventDoesNotDuplicateAlarm();
+    notifiesOnlyWhenANewAlarmIsCreated();
     lastViolatorExitClearsZone();
     exitKeepsAlarmActiveWhenAnotherViolatorRemains();
 }

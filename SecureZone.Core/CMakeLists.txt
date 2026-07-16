@@ -13,6 +13,8 @@ add_library(SecureZoneCore
     src/identity/RolePermissionService.cpp
     src/identity/CameraIdentityService.cpp
     src/machine/MachineStatusService.cpp
+    src/notification/PushNotificationService.cpp
+    src/notification/PushNotificationWorker.cpp
     src/presence/PresenceSessionService.cpp
     src/qr/QrCheckInService.cpp
     src/webhook/WebhookNotificationService.cpp
@@ -36,6 +38,7 @@ set(SECUREZONE_CORE_TESTS
     XProtectLineCrossingServiceTests
     XProtectPolicyAlarmServiceTests
     CameraIdentityServiceTests
+    PushNotificationTests
 )
 
 foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
@@ -51,6 +54,8 @@ foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
         set(test_source tests/xprotect/XProtectPolicyAlarmServiceTests.cpp)
     elseif(test_name STREQUAL "CameraIdentityServiceTests")
         set(test_source tests/identity/CameraIdentityServiceTests.cpp)
+    elseif(test_name STREQUAL "PushNotificationTests")
+        set(test_source tests/notification/PushNotificationTests.cpp)
     else()
         set(test_source tests/${test_name}.cpp)
     endif()
