@@ -25,6 +25,7 @@ struct UnidentifiedPersonWatchdogResult {
 class UnidentifiedPersonWatchdog {
 public:
     using AlarmCreatedNotifier = std::function<void(const domain::Alarm&)>;
+    using AlarmResolvedNotifier = std::function<void(const domain::Alarm&)>;
 
     UnidentifiedPersonWatchdog(
         CameraIdentityService& identityService,
@@ -32,6 +33,7 @@ public:
         repository::IZoneRepository& zoneRepository,
         repository::IAlarmRepository& alarmRepository,
         AlarmCreatedNotifier alarmCreatedNotifier = {},
+        AlarmResolvedNotifier alarmResolvedNotifier = {},
         std::chrono::seconds identityGracePeriod = std::chrono::minutes{2}
     );
 
@@ -43,7 +45,13 @@ private:
     repository::IZoneRepository& zoneRepository_;
     repository::IAlarmRepository& alarmRepository_;
     AlarmCreatedNotifier alarmCreatedNotifier_;
+    AlarmResolvedNotifier alarmResolvedNotifier_;
     std::chrono::seconds identityGracePeriod_;
+
+    void resolveAlarm(
+        const domain::Alarm& alarm,
+        std::chrono::system_clock::time_point resolvedAt
+    );
 };
 
 }

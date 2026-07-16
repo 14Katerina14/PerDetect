@@ -82,7 +82,12 @@ void logRequest(
 }
 
 bool isRegisteredRuntimeRoute(const httplib::Request& request) {
-    return (request.method == "GET" && (request.path == "/health" || request.path == "/version"))
+    return (request.method == "GET" && (
+            request.path == "/health"
+            || request.path == "/version"
+            || request.path == "/api/alarms/active"
+            || request.path == "/api/alarms/recent"
+        ))
         || (request.method == "POST" && (
             request.path == "/api/auth/login"
             || request.path == "/api/qr/check-in"
@@ -110,6 +115,8 @@ bool runHttpRuntimeServer(const ApiApplication& application) {
 
     server.Get("/health", handle);
     server.Get("/version", handle);
+    server.Get("/api/alarms/active", handle);
+    server.Get("/api/alarms/recent", handle);
     server.Post("/api/auth/login", handle);
     server.Post("/api/qr/check-in", handle);
     server.Post("/api/xprotect/line-crossing", handle);

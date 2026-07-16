@@ -5,6 +5,7 @@
 #include "securezone/api/http/HttpResponse.h"
 #include "securezone/api/http/Router.h"
 #include "securezone/api/routes/HealthRoutes.h"
+#include "securezone/api/routes/AlarmRoutes.h"
 #include "securezone/api/routes/AuthRoutes.h"
 #include "securezone/api/routes/CameraObjectRoutes.h"
 #include "securezone/api/routes/QrRoutes.h"
@@ -18,6 +19,8 @@ struct ApiRouteHandlers {
     CameraObjectRoutes::ObservationHandler cameraObjectObservationHandler{};
     AuthRoutes::LoginHandler loginHandler{};
     EndpointAuthorizer::Handler authorizationHandler{};
+    AlarmRoutes::ListHandler activeAlarmsHandler{};
+    AlarmRoutes::ListHandler recentAlarmsHandler{};
 };
 
 class ApiServer {
@@ -35,6 +38,7 @@ private:
     ApiSettings settings_;
     Router router_;
     HealthRoutes healthRoutes_;
+    AlarmRoutes alarmRoutes_;
     AuthRoutes authRoutes_;
     CameraObjectRoutes cameraObjectRoutes_;
     QrRoutes qrRoutes_;

@@ -1,4 +1,5 @@
 #include "securezone/query/ActiveAlarmQueryService.h"
+#include "securezone/query/RecentAlarmQueryService.h"
 #include "securezone/query/ActivePresenceQueryService.h"
 #include "securezone/query/ZoneStatusQueryService.h"
 
@@ -88,6 +89,15 @@ public:
     mutable std::optional<std::string> receivedZoneId;
 
     std::vector<domain::Alarm> findActive(
+        std::size_t limit,
+        const std::optional<std::string>& zoneId
+    ) const override {
+        receivedLimit = limit;
+        receivedZoneId = zoneId;
+        return alarms;
+    }
+
+    std::vector<domain::Alarm> findRecent(
         std::size_t limit,
         const std::optional<std::string>& zoneId
     ) const override {
@@ -201,6 +211,36 @@ void alarmsRemainVisibleWhenRelatedRecordsAreMissing() {
     assert(!result.front().machineStatus.has_value());
 }
 
+void recentAlarmsIncludeResolvedLifecycleData() {
+    const auto exitedAt = Clock::time_point{} + std::chrono::minutes{12};
+    FakeAlarmReadRepository alarms;
+    domain::Alarm alarm{};
+    alarm.alarmId = "ALARM-RESOLVED";
+    alarm.zoneId = "ZONE-001";
+    alarm.employeeId = "EMP-001";
+    alarm.status = domain::AlarmStatus::Resolved;
+    alarm.stillInside = false;
+    alarm.exitedAt = exitedAt;
+    alarm.resolvedAt = exitedAt;
+    alarms.alarms = {alarm};
+    FakeEmployeeRepository employees;
+    employees.employees = {employee()};
+    FakeZoneRepository zones;
+    zones.zones = {zone()};
+    FakeMachineRepository machines;
+    query::RecentAlarmQueryService service{alarms, employees, zones, machines};
+
+    const auto result = service.list(25, std::string{"ZONE-001"});
+
+    assert(alarms.receivedLimit == 25U);
+    assert(alarms.receivedZoneId == "ZONE-001");
+    assert(result.size() == 1U);
+    assert(result.front().status == domain::AlarmStatus::Resolved);
+    assert(!result.front().stillInside);
+    assert(result.front().resolvedAt == exitedAt);
+    assert(result.front().exitedAt == exitedAt);
+}
+
 void activePresenceIsEnrichedAtTheRequestedTime() {
     const auto now = Clock::time_point{} + std::chrono::seconds{100};
     FakePresenceReadRepository sessions;
@@ -249,6 +289,7 @@ void zonesAreEnrichedAndCameraFilterIsForwarded() {
 int main() {
     activeAlarmsAreEnrichedAndFiltered();
     alarmsRemainVisibleWhenRelatedRecordsAreMissing();
+    recentAlarmsIncludeResolvedLifecycleData();
     activePresenceIsEnrichedAtTheRequestedTime();
     zonesAreEnrichedAndCameraFilterIsForwarded();
 }

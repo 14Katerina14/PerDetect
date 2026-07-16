@@ -11,7 +11,7 @@
 
 namespace securezone::query {
 
-struct ActiveAlarmView {
+struct AlarmView {
     std::string alarmId;
     std::string zoneId;
     std::string zoneName;
@@ -25,8 +25,12 @@ struct ActiveAlarmView {
     std::string reason;
     std::string message;
     std::chrono::system_clock::time_point enteredAt{};
+    std::chrono::system_clock::time_point exitedAt{};
+    std::optional<std::chrono::system_clock::time_point> resolvedAt;
     bool stillInside{};
 };
+
+using ActiveAlarmView = AlarmView;
 
 struct ActivePresenceView {
     std::string sessionId;

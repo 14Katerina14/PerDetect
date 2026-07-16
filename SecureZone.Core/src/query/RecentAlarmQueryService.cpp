@@ -1,4 +1,4 @@
-#include "securezone/query/ActiveAlarmQueryService.h"
+#include "securezone/query/RecentAlarmQueryService.h"
 
 #include <algorithm>
 #include <utility>
@@ -12,7 +12,7 @@ std::size_t normalizedLimit(std::size_t limit) {
 
 }
 
-ActiveAlarmQueryService::ActiveAlarmQueryService(
+RecentAlarmQueryService::RecentAlarmQueryService(
     repository::IAlarmReadRepository& alarmRepository,
     repository::IEmployeeRepository& employeeRepository,
     repository::IZoneRepository& zoneRepository,
@@ -23,13 +23,13 @@ ActiveAlarmQueryService::ActiveAlarmQueryService(
     machineRepository_{machineRepository} {
 }
 
-std::vector<ActiveAlarmView> ActiveAlarmQueryService::list(
+std::vector<AlarmView> RecentAlarmQueryService::list(
     std::size_t limit,
     const std::optional<std::string>& zoneId
 ) const {
-    std::vector<ActiveAlarmView> views;
-    for (const auto& alarm : alarmRepository_.findActive(normalizedLimit(limit), zoneId)) {
-        ActiveAlarmView view{};
+    std::vector<AlarmView> views;
+    for (const auto& alarm : alarmRepository_.findRecent(normalizedLimit(limit), zoneId)) {
+        AlarmView view{};
         view.alarmId = alarm.alarmId;
         view.zoneId = alarm.zoneId;
         view.trackId = alarm.trackId;
