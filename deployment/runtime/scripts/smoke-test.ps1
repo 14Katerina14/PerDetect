@@ -66,6 +66,13 @@ function Assert-NonEmptyField {
     }
 }
 
+function Get-UtcTimestamp {
+    return [DateTime]::UtcNow.ToString(
+        "yyyy-MM-dd'T'HH:mm:ss.fff'Z'",
+        [Globalization.CultureInfo]::InvariantCulture
+    )
+}
+
 function Invoke-MongoScript {
     param(
         [Parameter(Mandatory)][string]$Script,
@@ -102,19 +109,48 @@ database.presence_sessions.deleteMany({$or:[{employeeId:"SMOKE-EMPLOYEE"},{zoneI
 database.camera_object_tracks.deleteMany({cameraId:"CAM-SMOKE"});
 database.track_identity_bindings.deleteMany({$or:[{cameraId:"CAM-SMOKE"},{employeeId:"SMOKE-EMPLOYEE"}]});
 database.alarms.deleteMany({$or:[{zoneId:"SMOKE-ZONE"},{employeeId:"SMOKE-EMPLOYEE"},{machineId:"SMOKE-MACHINE"},{trackId:{$regex:"^CAM-SMOKE:"}}]});
+database.push_notification_deliveries.deleteMany({zoneId:"SMOKE-ZONE"});
+database.push_subscriptions.deleteMany({subscriptionId:"SMOKE-MANAGER-SUBSCRIPTION"});
 database.access_policies.deleteMany({policyId:"SMOKE-POLICY"});
 database.zones.deleteMany({zoneId:"SMOKE-ZONE"});
 database.machines.deleteMany({machineId:"SMOKE-MACHINE"});
-database.app_users.deleteMany({userId:"SMOKE-SCANNER"});
+database.app_users.deleteMany({userId:{$in:["SMOKE-SCANNER","SMOKE-MANAGER"]}});
 database.employees.deleteMany({employeeId:"SMOKE-EMPLOYEE"});
 '@
 
 $setupScript = $cleanupScript + @'
 
-database.employees.insertOne({employeeId:"SMOKE-EMPLOYEE",fullName:"Smoke Test Employee",department:"Testing",roles:["maintenance"],status:"active",qrTokenHash:"smoke-test-token-hash"});
+database.employees.insertOne({employeeId:"SMOKE-EMPLOYEE",fullName:"Smoke Test Employee",department:"Testing",roles:["operator"],status:"active",qrTokenHash:"smoke-test-token-hash"});
 database.machines.insertOne({machineId:"SMOKE-MACHINE",name:"Smoke Test Machine",status:"stopped",updatedAt:new Date()});
 database.zones.insertOne({zoneId:"SMOKE-ZONE",name:"Smoke Test Dangerous Zone",cameraId:"CAM-SMOKE",type:"dangerous",status:"active",relatedMachineId:"SMOKE-MACHINE",xprotectEventName:"SecureZone.OpenSDK.WiseAI.LineCrossing.Smoke.State-2"});
 database.access_policies.insertOne({policyId:"SMOKE-POLICY",zoneId:"SMOKE-ZONE",allowedRoles:["maintenance"],machineStatesAllowed:["stopped","maintenance"],timeWindows:[]});
+database.app_users.insertOne({userId:"SMOKE-MANAGER",username:"smoke-manager",passwordHash:"not-used-by-smoke-test",role:"manager",status:"active"});
+database.push_subscriptions.insertOne({subscriptionId:"SMOKE-MANAGER-SUBSCRIPTION",userId:"SMOKE-MANAGER",provider:"expo",deviceToken:"ExponentPushToken[smoke-manager]",status:"active",updatedAt:new Date()});
+'@
+
+$activeAlarmAssertion = @'
+const database = db.getSiblingDB(process.env.MONGO_INITDB_DATABASE || "securezone");
+const alarm = database.alarms.findOne({zoneId:"SMOKE-ZONE",trackId:"CAM-SMOKE:SMOKE-WORKER-OBJECT"});
+if (!alarm) throw new Error("Expected a persisted smoke alarm.");
+if (alarm.status !== "active" || alarm.stillInside !== true) throw new Error("Smoke alarm is not active.");
+if (alarm.employeeId !== "SMOKE-EMPLOYEE") throw new Error("Smoke alarm is not linked to the QR employee.");
+if (!String(alarm.reason).includes("role")) throw new Error("Smoke alarm does not contain the role denial reason.");
+const created = database.push_notification_deliveries.find({alarmId:alarm.alarmId,title:"SecureZone access violation",recipientUserId:"SMOKE-MANAGER",status:"pending"}).toArray();
+if (created.length !== 1) throw new Error("Expected exactly one pending manager violation notification.");
+if (database.alarms.countDocuments({zoneId:"SMOKE-ZONE",status:"active"}) !== 1) throw new Error("Expected exactly one active smoke alarm.");
+'@
+
+$resolvedAlarmAssertion = @'
+const database = db.getSiblingDB(process.env.MONGO_INITDB_DATABASE || "securezone");
+const alarm = database.alarms.findOne({zoneId:"SMOKE-ZONE",trackId:"CAM-SMOKE:SMOKE-WORKER-OBJECT"});
+if (!alarm) throw new Error("Expected the persisted smoke alarm.");
+if (alarm.status !== "resolved" || alarm.stillInside !== false) throw new Error("Smoke alarm was not resolved.");
+if (!(alarm.resolvedAt instanceof Date) || !(alarm.exitedAt instanceof Date)) throw new Error("Resolved smoke alarm has no exit timestamps.");
+const createdCount = database.push_notification_deliveries.countDocuments({alarmId:alarm.alarmId,title:"SecureZone access violation",recipientUserId:"SMOKE-MANAGER"});
+const cleared = database.push_notification_deliveries.find({alarmId:alarm.alarmId,title:"SecureZone violation cleared",recipientUserId:"SMOKE-MANAGER",status:"pending"}).toArray();
+if (createdCount !== 1) throw new Error("Violation notification was duplicated.");
+if (cleared.length !== 1) throw new Error("Expected exactly one pending manager clear notification.");
+if (database.alarms.countDocuments({zoneId:"SMOKE-ZONE",status:{$in:["active","acknowledged"]}}) !== 0) throw new Error("An active smoke alarm remains after exit.");
 '@
 
 $apiPort = Get-DotEnvValue "SECUREZONE_API_HOST_PORT"
@@ -130,20 +166,22 @@ $headers = @{ "X-SecureZone-Api-Key" = $apiKey }
 $eventName = "SecureZone.OpenSDK.WiseAI.LineCrossing.Smoke.State-2"
 $sourceName = "SecureZone Smoke Camera"
 $cameraId = "CAM-SMOKE"
-$unknownObjectId = "SMOKE-UNKNOWN-OBJECT"
-$authorizedObjectId = "SMOKE-AUTHORIZED-OBJECT"
+$workerObjectId = "SMOKE-WORKER-OBJECT"
 $flowSucceeded = $false
 $cleanupSucceeded = $false
 
 try {
-    Write-Host "[1/8] Health check"
+    Write-Host "[1/10] Health and version check"
     $health = Invoke-RestMethod -Method Get -Uri "$baseUri/health"
     Assert-FieldEquals $health "status" "ok" "Health check"
 
     Write-Host "Preparing isolated MongoDB smoke fixtures..."
     Invoke-MongoScript -Script $setupScript | Out-Null
 
-    Write-Host "[2/8] Provision scanner and obtain JWT"
+    $version = Invoke-RestMethod -Method Get -Uri "$baseUri/version"
+    Assert-NonEmptyField $version "buildId" "Version check"
+
+    Write-Host "[2/10] Provision scanner and obtain JWT"
     $scannerPassword = "Smoke-$([guid]::NewGuid().ToString('N'))"
     Invoke-ScannerProvisioning -Password $scannerPassword
     $loginBody = @{ username = "smoke-scanner"; password = $scannerPassword } |
@@ -154,44 +192,12 @@ try {
     $scannerHeaders = @{ Authorization = "Bearer $($loginResult.accessToken)" }
     $scannerPassword = $null
 
-    Write-Host "[3/8] Unknown camera object -> violation"
-    $unknownEnter = @{
-        eventId = "smoke-unknown-enter-$([guid]::NewGuid().ToString('N'))"
-        eventName = $eventName
-        sourceName = $sourceName
-        receivedAt = [DateTimeOffset]::UtcNow.ToString("o")
-        cameraId = $cameraId
-        objectId = $unknownObjectId
-        action = "enter"
-    } | ConvertTo-Json -Compress
-    $unknownEnterDecision = Invoke-RestMethod -Method Post `
-        -Uri "$baseUri/api/xprotect/line-crossing" -Headers $headers `
-        -ContentType "application/json" -Body $unknownEnter
-    Assert-FieldEquals $unknownEnterDecision "accepted" $true "Unknown-object LineCrossing"
-    Assert-FieldEquals $unknownEnterDecision "decision" "violation" "Unknown-object LineCrossing"
-
-    Write-Host "[4/8] Unknown camera object exit -> alarm cleared"
-    $unknownExit = @{
-        eventId = "smoke-unknown-exit-$([guid]::NewGuid().ToString('N'))"
-        eventName = $eventName
-        sourceName = $sourceName
-        receivedAt = [DateTimeOffset]::UtcNow.ToString("o")
-        cameraId = $cameraId
-        objectId = $unknownObjectId
-        action = "exit"
-    } | ConvertTo-Json -Compress
-    $unknownExitDecision = Invoke-RestMethod -Method Post `
-        -Uri "$baseUri/api/xprotect/line-crossing" -Headers $headers `
-        -ContentType "application/json" -Body $unknownExit
-    Assert-FieldEquals $unknownExitDecision "accepted" $true "Unknown-object exit"
-    Assert-FieldEquals $unknownExitDecision "decision" "cleared" "Unknown-object exit"
-
-    Write-Host "[5/8] Recent Human camera observation"
+    Write-Host "[3/10] Inject recent Human camera observation"
     $observation = @{
         cameraId = $cameraId
-        objectId = $authorizedObjectId
+        objectId = $workerObjectId
         objectType = "Human"
-        observedAt = [DateTimeOffset]::UtcNow.ToString("o")
+        observedAt = Get-UtcTimestamp
     } | ConvertTo-Json -Compress
     $observationResult = Invoke-RestMethod -Method Post `
         -Uri "$baseUri/api/xprotect/object-observations" -Headers $headers `
@@ -199,7 +205,7 @@ try {
     Assert-FieldEquals $observationResult "accepted" $true "Human observation"
     Assert-FieldEquals $observationResult "status" "observed" "Human observation"
 
-    Write-Host "[6/8] Authenticated QR check-in -> camera object identity binding"
+    Write-Host "[4/10] Authenticated QR check-in -> Human/employee binding"
     $checkIn = @{
         employeeId = "SMOKE-EMPLOYEE"
         zoneId = "SMOKE-ZONE"
@@ -209,31 +215,61 @@ try {
         -Headers $scannerHeaders -ContentType "application/json" -Body $checkIn
     Assert-FieldEquals $checkInResult "accepted" $true "QR check-in"
     Assert-FieldIn $checkInResult "status" @("started", "extended", "already_active") "QR check-in"
-    Assert-FieldEquals $checkInResult "objectId" $authorizedObjectId "QR check-in"
+    Assert-FieldEquals $checkInResult "objectId" $workerObjectId "QR check-in"
     Assert-NonEmptyField $checkInResult "bindingId" "QR check-in"
 
-    Write-Host "[7/8] Bound camera object -> allowed"
-    $authorizedEvent = @{
-        eventId = "smoke-authorized-enter-$([guid]::NewGuid().ToString('N'))"
+    Write-Host "[5/10] Bound worker enters forbidden zone -> violation"
+    $enterEventId = "smoke-worker-enter-$([guid]::NewGuid().ToString('N'))"
+    $enterEvent = @{
+        eventId = $enterEventId
         eventName = $eventName
         sourceName = $sourceName
-        receivedAt = [DateTimeOffset]::UtcNow.ToString("o")
+        receivedAt = Get-UtcTimestamp
         cameraId = $cameraId
-        objectId = $authorizedObjectId
+        objectId = $workerObjectId
         action = "enter"
     } | ConvertTo-Json -Compress
-    $authorizedDecision = Invoke-RestMethod -Method Post `
+    $enterDecision = Invoke-RestMethod -Method Post `
         -Uri "$baseUri/api/xprotect/line-crossing" -Headers $headers `
-        -ContentType "application/json" -Body $authorizedEvent
-    Assert-FieldEquals $authorizedDecision "accepted" $true "Authorized-object LineCrossing"
-    Assert-FieldEquals $authorizedDecision "decision" "allowed" "Authorized-object LineCrossing"
-    Assert-FieldEquals $authorizedDecision "zoneId" "SMOKE-ZONE" "Authorized-object LineCrossing"
-    Assert-FieldEquals $authorizedDecision "employeeId" "SMOKE-EMPLOYEE" "Authorized-object LineCrossing"
+        -ContentType "application/json" -Body $enterEvent
+    Assert-FieldEquals $enterDecision "accepted" $true "Worker LineCrossing"
+    Assert-FieldEquals $enterDecision "decision" "violation" "Worker LineCrossing"
+    Assert-FieldEquals $enterDecision "zoneId" "SMOKE-ZONE" "Worker LineCrossing"
+    Assert-FieldEquals $enterDecision "employeeId" "SMOKE-EMPLOYEE" "Worker LineCrossing"
+
+    Write-Host "[6/10] Verify active MongoDB alarm and manager notification"
+    Invoke-MongoScript -Script $activeAlarmAssertion | Out-Null
+
+    Write-Host "[7/10] Replay same event -> duplicate without a second alarm"
+    $duplicateDecision = Invoke-RestMethod -Method Post `
+        -Uri "$baseUri/api/xprotect/line-crossing" -Headers $headers `
+        -ContentType "application/json" -Body $enterEvent
+    Assert-FieldEquals $duplicateDecision "duplicate" $true "Duplicate LineCrossing"
+    Invoke-MongoScript -Script $activeAlarmAssertion | Out-Null
+
+    Write-Host "[8/10] Worker exits forbidden zone -> alarm cleared"
+    $exitEvent = @{
+        eventId = "smoke-worker-exit-$([guid]::NewGuid().ToString('N'))"
+        eventName = $eventName
+        sourceName = $sourceName
+        receivedAt = Get-UtcTimestamp
+        cameraId = $cameraId
+        objectId = $workerObjectId
+        action = "exit"
+    } | ConvertTo-Json -Compress
+    $exitDecision = Invoke-RestMethod -Method Post `
+        -Uri "$baseUri/api/xprotect/line-crossing" -Headers $headers `
+        -ContentType "application/json" -Body $exitEvent
+    Assert-FieldEquals $exitDecision "accepted" $true "Worker exit"
+    Assert-FieldEquals $exitDecision "decision" "cleared" "Worker exit"
+
+    Write-Host "[9/10] Verify resolved alarm and manager clear notification"
+    Invoke-MongoScript -Script $resolvedAlarmAssertion | Out-Null
 
     $flowSucceeded = $true
 }
 finally {
-    Write-Host "[8/8] Cleanup"
+    Write-Host "[10/10] Cleanup"
     $cleanupSucceeded = Invoke-MongoScript -Script $cleanupScript -IgnoreErrors
 }
 
@@ -241,4 +277,4 @@ if ($flowSucceeded -and -not $cleanupSucceeded) {
     throw "Smoke flow passed, but isolated fixture cleanup failed."
 }
 
-Write-Host "SecureZone runtime camera-identity smoke test passed."
+Write-Host "SecureZone full local event injection flow passed."

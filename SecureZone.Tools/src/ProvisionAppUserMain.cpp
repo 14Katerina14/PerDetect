@@ -67,8 +67,14 @@ int main(int argc, char** argv) {
     }
 
     std::string password;
-    if (!std::getline(std::cin, password)
-        || !securezone::auth::isPasswordLengthAllowed(password)) {
+    if (!std::getline(std::cin, password)) {
+        std::cerr << "Password must contain between 12 and 256 characters.\n";
+        return 2;
+    }
+    if (!password.empty() && password.back() == '\r') {
+        password.pop_back();
+    }
+    if (!securezone::auth::isPasswordLengthAllowed(password)) {
         std::cerr << "Password must contain between 12 and 256 characters.\n";
         return 2;
     }

@@ -104,37 +104,42 @@ alone. The runtime flow is:
 Do not omit `cameraId` from QR requests or `cameraId`/`objectId` from
 LineCrossing events. They are required identity evidence.
 
-## Run the repeatable smoke test
+## Run the full local event injector
 
-The smoke scripts create temporary, isolated records named `SMOKE-*` and use
-camera `CAM-SMOKE`. They do not modify the normal production/demo seed data.
-Each run verifies:
+The PowerShell injector creates temporary, isolated records named `SMOKE-*`
+and uses camera `CAM-SMOKE`. It does not modify the normal production/demo
+seed data. The requests use the normal HTTP routes and application services;
+only XProtect and the physical camera are replaced by the script. Each run
+verifies:
 
 1. `GET /health` returns `status: ok`.
-2. An unknown camera object entering the smoke zone returns `violation`.
-3. The same object exiting returns `cleared`, so no test alarm remains active.
-4. A recent Human observation is accepted for `CAM-SMOKE`.
-5. A temporary scanner is provisioned with Argon2id, logs in, and receives a
+2. `GET /version` identifies the running backend image.
+3. A temporary scanner is provisioned with Argon2id, logs in, and receives a
    JWT without storing a password or password hash in the repository.
-6. Authenticated QR check-in includes `cameraId`, binds `SMOKE-EMPLOYEE` to the observed
-   object, and returns a non-empty `bindingId`.
-7. LineCrossing for the bound `cameraId`/`objectId` returns `allowed` for the
-   isolated maintenance employee while the isolated machine is `stopped`.
-8. Temporary employees, scanner users, machines, zones, policies, sessions,
-   tracks, bindings, and alarms are removed.
+4. A recent Human observation is accepted for `CAM-SMOKE`.
+5. Authenticated QR check-in binds `SMOKE-EMPLOYEE` to the latest Human object
+   and returns a non-empty `bindingId`.
+6. The bound worker enters a forbidden zone and the real policy engine returns
+   `violation` because the worker role is not allowed.
+7. MongoDB contains one active alarm and one pending manager notification.
+8. Replaying the same XProtect `eventId` is idempotent and creates no duplicate
+   alarm or notification.
+9. The worker exits, the API returns `cleared`, the alarm is resolved, and a
+   separate manager clear notification is queued.
+10. Temporary employees, app users, subscriptions, machines, zones, policies,
+    sessions, tracks, bindings, alarms, and notifications are removed.
 
 ```powershell
 ./scripts/smoke-test.ps1
 ```
 
-```bash
-./scripts/smoke-test.sh
-```
+The script uses `try/finally`, so cleanup is attempted after both success and
+failure. It stops on HTTP, MongoDB, or JSON validation errors and does not
+print the API key, MongoDB password, scanner password, or JWT.
 
-The Bash script uses an exit trap and the PowerShell script uses `try/finally`,
-so cleanup is attempted after both success and failure. The scripts stop on
-HTTP, MongoDB, or JSON validation errors and do not print the API key or the
-MongoDB password.
+`./scripts/smoke-test.sh` remains available as the smaller Linux deployment
+smoke test. Use the PowerShell injector above to validate the complete alarm
+and notification lifecycle.
 
 ## Stop and preserve data
 

@@ -254,6 +254,32 @@ void lastViolatorExitClearsZone() {
     assert(fixture.alarms.countActiveByZone("ZONE-001") == 0);
 }
 
+void lastViolatorExitNotifiesWithResolvedAlarm() {
+    Fixture fixture;
+    fixture.alarms.alarms.push_back(activeAlarm("CAM-001:42", "ALARM-001"));
+    fixture.command.action = "exit";
+    std::vector<domain::Alarm> resolvedNotifications;
+    xprotect::XProtectPolicyAlarmService service{
+        fixture.employees,
+        fixture.policies,
+        fixture.machines,
+        fixture.alarms,
+        {},
+        [&resolvedNotifications](const domain::Alarm& alarm) {
+            resolvedNotifications.push_back(alarm);
+        }
+    };
+
+    const auto result = service.evaluate(fixture.command, fixture.zone, fixture.binding);
+
+    assert(result.decision == "cleared");
+    assert(resolvedNotifications.size() == 1U);
+    assert(resolvedNotifications.front().alarmId == "ALARM-001");
+    assert(resolvedNotifications.front().status == domain::AlarmStatus::Resolved);
+    assert(!resolvedNotifications.front().stillInside);
+    assert(resolvedNotifications.front().resolvedAt == fixture.command.receivedAt);
+}
+
 void exitKeepsAlarmActiveWhenAnotherViolatorRemains() {
     Fixture fixture;
     fixture.alarms.alarms.push_back(activeAlarm("CAM-001:42", "ALARM-001"));
@@ -277,5 +303,6 @@ int main() {
     repeatedEventDoesNotDuplicateAlarm();
     notifiesOnlyWhenANewAlarmIsCreated();
     lastViolatorExitClearsZone();
+    lastViolatorExitNotifiesWithResolvedAlarm();
     exitKeepsAlarmActiveWhenAnotherViolatorRemains();
 }
