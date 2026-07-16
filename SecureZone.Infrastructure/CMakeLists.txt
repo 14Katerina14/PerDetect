@@ -1,6 +1,7 @@
 find_package(bsoncxx CONFIG REQUIRED)
 find_package(mongocxx CONFIG REQUIRED)
 find_package(jwt-cpp CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 find_package(unofficial-sodium CONFIG REQUIRED)
 
 add_library(SecureZone.Infrastructure
@@ -37,6 +38,7 @@ target_link_libraries(SecureZone.Infrastructure
     PUBLIC
         SecureZoneCore
         jwt-cpp::jwt-cpp
+        nlohmann_json::nlohmann_json
         unofficial-sodium::sodium
         $<IF:$<TARGET_EXISTS:mongo::bsoncxx_static>,mongo::bsoncxx_static,mongo::bsoncxx_shared>
         $<IF:$<TARGET_EXISTS:mongo::mongocxx_static>,mongo::mongocxx_static,mongo::mongocxx_shared>

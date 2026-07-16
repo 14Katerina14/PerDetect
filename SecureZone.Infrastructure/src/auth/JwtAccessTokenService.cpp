@@ -2,7 +2,7 @@
 
 #include "securezone/domain/AppUser.h"
 
-#include <jwt-cpp/jwt.h>
+#include <jwt-cpp/traits/nlohmann-json/defaults.h>
 #include <sodium.h>
 
 #include <array>

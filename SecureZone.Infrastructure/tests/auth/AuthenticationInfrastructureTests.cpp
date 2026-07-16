@@ -1,7 +1,7 @@
 #include "securezone/infrastructure/auth/JwtAccessTokenService.h"
 #include "securezone/infrastructure/auth/SodiumPasswordVerifier.h"
 
-#include <jwt-cpp/jwt.h>
+#include <jwt-cpp/traits/nlohmann-json/defaults.h>
 
 #include <cassert>
 #include <chrono>
