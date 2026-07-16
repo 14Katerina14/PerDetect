@@ -6,7 +6,7 @@ using VideoOS.Platform.Messaging;
 
 namespace SecureZone.XProtectPlugin
 {
-    internal sealed class SecureZoneViolationEventPublisher
+    internal sealed class SecureZoneViolationEventPublisher : IDecisionEventPublisher
     {
         public void Publish(LineCrossingEventSnapshot sourceEvent, SecureZoneDecisionResponse decision)
         {

@@ -35,6 +35,23 @@ Backend timeout, HTTP errors, invalid JSON, unknown zones, and `allowed`
 responses never raise `SecureZoneViolationConfirmed`. They are written to the
 XProtect Event Server log.
 
+## Contract tests without XProtect
+
+The contract test executable verifies the production decision processor without
+connecting to an XProtect server. It covers allowed, violation, duplicate,
+cleared, timeout, and HTTP 500 behavior:
+
+```powershell
+msbuild ..\SecureZone.XProtectPlugin.ContractTests\SecureZone.XProtectPlugin.ContractTests.csproj `
+  /restore `
+  /p:Configuration=Release
+
+& ..\SecureZone.XProtectPlugin.ContractTests\bin\Release\SecureZone.XProtectPlugin.ContractTests.exe
+```
+
+The tests replace only the MIP event publisher and logger with recording fakes.
+The decision processor is the same class used by the Event Server plug-in.
+
 ## Backend contract
 
 The plugin sends:
