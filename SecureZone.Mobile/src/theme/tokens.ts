@@ -5,6 +5,7 @@ export const colors = {
   textMuted: '#66758A',
   primary: '#075AD7',
   primaryDark: '#0347B7',
+  primarySoft: '#EEF5FF',
   border: '#DCE3ED',
   inputBackground: '#FBFCFE',
   success: '#16A765',
@@ -13,6 +14,8 @@ export const colors = {
   dangerSoft: '#FFF0F0',
   warning: '#D98A00',
   warningSoft: '#FFF7E6',
+  darkSurface: '#101923',
+  darkSurfaceSoft: '#1B2836',
   decorativeBlue: '#EAF2FF',
 } as const;
 
