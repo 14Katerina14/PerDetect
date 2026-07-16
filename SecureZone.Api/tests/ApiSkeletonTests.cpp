@@ -383,6 +383,22 @@ void applicationRoutesHealthRequests() {
     assert(response.body.find("securezone-api") != std::string::npos);
 }
 
+void applicationExposesVersionAndBuildId() {
+    ApiApplicationInfo info{};
+    info.version = "1.2.3";
+    info.buildId = "abc123";
+    const ApiApplication app{{}, info};
+
+    const auto response = app.handle({"GET", "/version", {}, {}});
+
+    assert(response.statusCode == 200);
+    assert(response.body.find(R"("version":"1.2.3")") != std::string::npos);
+    assert(response.body.find(R"("buildId":"abc123")") != std::string::npos);
+
+    const auto wrongMethod = app.handle({"POST", "/version", {}, {}});
+    assert(wrongMethod.statusCode == 405);
+}
+
 void applicationRoutesQrCheckInRequests() {
     const ApiApplication app{};
 
@@ -859,6 +875,7 @@ int main() {
     routerReturnsMethodNotAllowedForKnownPathWithWrongMethod();
     settingsCanBePassedToServer();
     applicationRoutesHealthRequests();
+    applicationExposesVersionAndBuildId();
     applicationRoutesQrCheckInRequests();
     applicationRoutesQrCheckInRequestsToConfiguredHandler();
     qrRouteMapsRejectedStatusesToHttpResponses();

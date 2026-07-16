@@ -235,6 +235,7 @@ MongoApiRuntimeComposition::createXProtectLineCrossingHandler() const {
 MongoApiRuntimeConfig loadMongoApiRuntimeConfigFromEnvironment() {
     MongoApiRuntimeConfig config{};
     config.apiRuntime.apiSettings = loadApiSettingsFromEnvironment();
+    config.apiRuntime.appInfo = loadApiApplicationInfoFromEnvironment();
     config.apiRuntime.qrPresenceDuration = config.apiRuntime.apiSettings.qrPresenceDuration;
     config.mongoDb = mongoSettingsFromApiSettings(config.apiRuntime.apiSettings);
     return config;

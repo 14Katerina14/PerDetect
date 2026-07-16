@@ -4,6 +4,7 @@ FROM ubuntu:24.04 AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
 ARG VCPKG_COMMIT=d015e31e90838a4c9dfa3eed45979bc70d9357fc
+ARG SECUREZONE_BUILD_ID=local
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
@@ -58,6 +59,7 @@ RUN cmake -S . -B /src/build \
 FROM ubuntu:24.04 AS runtime
 
 ARG DEBIAN_FRONTEND=noninteractive
+ARG SECUREZONE_BUILD_ID=local
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
@@ -80,7 +82,8 @@ ENV SECUREZONE_API_HOST=0.0.0.0 \
     SECUREZONE_MONGO_DATABASE=securezone \
     SECUREZONE_QR_PRESENCE_MINUTES=2 \
     SECUREZONE_JWT_TTL_MINUTES=60 \
-    SECUREZONE_UNIDENTIFIED_GRACE_SECONDS=120
+    SECUREZONE_UNIDENTIFIED_GRACE_SECONDS=120 \
+    SECUREZONE_BUILD_ID=${SECUREZONE_BUILD_ID}
 
 EXPOSE 8080
 
