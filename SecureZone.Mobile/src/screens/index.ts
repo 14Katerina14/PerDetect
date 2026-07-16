@@ -4,6 +4,7 @@ export { CheckInResultScreen } from './CheckInResultScreen';
 export { IdentityAdministrationScreen } from './IdentityAdministrationScreen';
 export { LoginScreen } from './LoginScreen';
 export { ManagerDashboardScreen } from './ManagerDashboardScreen';
+export { AuditLogScreen, CameraViewScreen, EventHistoryScreen, SafetyBriefingScreen } from './MonitoringVisualScreens';
 export { MyAccessScreen } from './MyAccessScreen';
 export { OperationsScreen } from './OperationsScreen';
 export { ProfileScreen } from './ProfileScreen';
