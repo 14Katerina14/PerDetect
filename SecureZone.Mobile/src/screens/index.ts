@@ -7,6 +7,7 @@ export { ManagerDashboardScreen } from './ManagerDashboardScreen';
 export { AuditLogScreen, CameraViewScreen, EventHistoryScreen, SafetyBriefingScreen } from './MonitoringVisualScreens';
 export { MyAccessScreen } from './MyAccessScreen';
 export { OperationsScreen } from './OperationsScreen';
+export { AlarmAcknowledgementSheetScreen, ConfirmationDialogScreen, FilterBottomSheetScreen, QrExpiredScreen } from './OverlayVisualScreens';
 export { ProfileScreen } from './ProfileScreen';
 export { QrAccessScreen } from './QrAccessScreen';
 export { ScannerScreen } from './ScannerScreen';
