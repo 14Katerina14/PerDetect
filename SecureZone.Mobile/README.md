@@ -65,6 +65,14 @@ server** before signing in. Test accounts use password `demo`:
 | `manager` | Active and recent alarms |
 | `admin` | Active and recent alarms |
 
+For a one-phone test, keep the phone logged in as `scanner` and display the
+worker QR on the laptop:
+
+```powershell
+node scripts/generate-worker-qr.mjs EMP-001
+Start-Process .\worker-EMP-001-qr.png
+```
+
 Raise and clear an alarm from another PowerShell window:
 
 ```powershell

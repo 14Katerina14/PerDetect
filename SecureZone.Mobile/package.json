@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "check": "pnpm typecheck && pnpm test",
-    "mock-api": "node scripts/mock-api.mjs"
+    "mock-api": "node scripts/mock-api.mjs",
+    "worker-qr": "node scripts/generate-worker-qr.mjs"
   },
   "dependencies": {
     "expo": "57.0.6",
