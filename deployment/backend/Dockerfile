@@ -3,7 +3,7 @@
 FROM ubuntu:24.04 AS build
 
 ARG DEBIAN_FRONTEND=noninteractive
-ARG VCPKG_COMMIT=3e169054dfb52ed75fa3159a81282db4b401ae03
+ARG VCPKG_COMMIT=d015e31e90838a4c9dfa3eed45979bc70d9357fc
 
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \

@@ -21,7 +21,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Secret scan
         shell: bash
@@ -45,7 +45,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Validate MongoDB Docker Compose
         shell: bash
@@ -70,7 +70,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Configure CMake core build
         run: |
@@ -90,12 +90,20 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install native dependency build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y autoconf autoconf-archive automake build-essential libtool
+
+      - name: Fetch pinned vcpkg baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline="$(python3 -c 'import json; print(json.load(open("vcpkg.json"))["builtin-baseline"])')"
+          git -C "$VCPKG_INSTALLATION_ROOT" fetch --depth=1 origin "$baseline"
+          git -C "$VCPKG_INSTALLATION_ROOT" cat-file -e "$baseline:versions/baseline.json"
 
       - name: Configure CMake MongoDB infrastructure build
         run: |
@@ -120,7 +128,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Build SecureZone backend image
         run: |
