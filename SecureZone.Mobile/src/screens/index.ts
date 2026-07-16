@@ -8,5 +8,8 @@ export { OperationsScreen } from './OperationsScreen';
 export { ProfileScreen } from './ProfileScreen';
 export { QrAccessScreen } from './QrAccessScreen';
 export { ScannerScreen } from './ScannerScreen';
+export { AdminOverviewScreen, AlarmListScreen, NotificationCenterScreen, ScannerHistoryScreen } from './SecondaryVisualScreens';
 export { SharedStatesScreen } from './SharedStatesScreen';
 export { SystemConfigurationScreen } from './SystemConfigurationScreen';
+export { WorkerHomeScreen } from './WorkerHomeScreen';
+export { ZoneDetailsScreen } from './ZoneDetailsScreen';

@@ -1,12 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
 
-import { ManagerDashboardScreen } from './src/screens';
+import { WorkerHomeScreen } from './src/screens';
 
 export default function App() {
   return (
     <>
       <StatusBar style="dark" />
-      <ManagerDashboardScreen />
+      <WorkerHomeScreen />
     </>
   );
 }
