@@ -14,4 +14,5 @@ export { AdminOverviewScreen, AlarmListScreen, NotificationCenterScreen, Scanner
 export { SharedStatesScreen } from './SharedStatesScreen';
 export { SystemConfigurationScreen } from './SystemConfigurationScreen';
 export { WorkerHomeScreen } from './WorkerHomeScreen';
+export { RoleMenuScreen, VisualDesignSystemScreen } from './VisualSystemScreens';
 export { ZoneDetailsScreen } from './ZoneDetailsScreen';
