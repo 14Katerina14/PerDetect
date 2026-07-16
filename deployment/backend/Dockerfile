@@ -8,6 +8,7 @@ ARG VCPKG_COMMIT=3e169054dfb52ed75fa3159a81282db4b401ae03
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
         autoconf \
+        autoconf-archive \
         automake \
         build-essential \
         ca-certificates \
