@@ -6,6 +6,7 @@
 #include <optional>
 #include <regex>
 #include <utility>
+#include <sstream>
 
 namespace securezone::api {
 namespace {
@@ -15,6 +16,16 @@ std::optional<std::string> field(const std::string& body, const std::string& nam
     std::smatch match;
     if (!std::regex_search(body, match, pattern)) return std::nullopt;
     return match[1].str();
+}
+
+std::string jsonEscape(const std::string& value) {
+    std::string escaped;
+    for (const auto character : value) {
+        if (character == '"') escaped += "\\\"";
+        else if (character == '\\') escaped += "\\\\";
+        else escaped += character;
+    }
+    return escaped;
 }
 
 }
@@ -34,6 +45,7 @@ HttpResponse CameraObjectRoutes::handleObservation(const HttpRequest& request) c
     const auto cameraId = field(request.body, "cameraId").value_or("");
     const auto objectId = field(request.body, "objectId").value_or("");
     const auto objectType = field(request.body, "objectType").value_or("");
+    const auto objectStatus = field(request.body, "status").value_or("active");
     const auto observedAtText = field(request.body, "observedAt").value_or("");
     const auto observedAt = XProtectLineCrossingHandler::parseReceivedAt(observedAtText);
     if (cameraId.empty() || objectId.empty() || objectType.empty() || !observedAt.has_value()) {
@@ -43,10 +55,25 @@ HttpResponse CameraObjectRoutes::handleObservation(const HttpRequest& request) c
         return jsonResponse(503, R"({"accepted":false,"status":"service_unavailable"})");
     }
 
-    const bool accepted = handler_({cameraId, objectId, objectType, *observedAt});
-    return accepted
-        ? jsonResponse(202, R"({"accepted":true,"status":"observed"})")
-        : jsonResponse(400, R"({"accepted":false,"status":"rejected"})");
+    identity::CameraObjectObservationStatus status{};
+    if (objectStatus == "active") {
+        status = identity::CameraObjectObservationStatus::Active;
+    } else if (objectStatus == "lost") {
+        status = identity::CameraObjectObservationStatus::Lost;
+    } else {
+        return jsonResponse(400, R"({"accepted":false,"status":"invalid_object_status"})");
+    }
+
+    const auto result = handler_({cameraId, objectId, objectType, *observedAt, status});
+    std::ostringstream body;
+    body << R"({"accepted":)" << (result.accepted ? "true" : "false")
+         << R"(,"status":")" << jsonEscape(result.status)
+         << R"(","decision":")" << jsonEscape(result.decision)
+         << R"(","zoneId":")" << jsonEscape(result.zoneId)
+         << R"(","message":")" << jsonEscape(result.message)
+         << R"(","eventId":")" << jsonEscape(result.eventId)
+         << R"(","duplicate":)" << (result.duplicate ? "true" : "false") << "}";
+    return jsonResponse(result.accepted ? 200 : 400, body.str());
 }
 
 }

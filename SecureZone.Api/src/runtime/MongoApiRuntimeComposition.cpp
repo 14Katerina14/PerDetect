@@ -5,7 +5,9 @@
 #include "securezone/infrastructure/mongodb/MongoDbSettingsProvider.h"
 #include "securezone/infrastructure/mongodb/MongoRepositoryProvider.h"
 #include "securezone/presence/PresenceSessionService.h"
+#include "securezone/notification/PushNotificationService.h"
 #include "securezone/identity/CameraIdentityService.h"
+#include "securezone/identity/UnidentifiedPersonWatchdog.h"
 #include "securezone/qr/QrCheckInService.h"
 #include "securezone/xprotect/XProtectLineCrossingService.h"
 #include "securezone/xprotect/XProtectPolicyAlarmService.h"
@@ -56,6 +58,8 @@ struct MongoApiRuntimeComposition::State {
           presenceSessions{repositoryProvider.presenceSessionRepository()},
           cameraObjectTracks{repositoryProvider.cameraObjectTrackRepository()},
           trackIdentityBindings{repositoryProvider.trackIdentityBindingRepository()},
+          pushSubscriptions{repositoryProvider.pushSubscriptionRepository()},
+          pushDeliveries{repositoryProvider.pushNotificationDeliveryRepository()},
           cameraIdentityService{cameraObjectTracks, trackIdentityBindings},
           presenceService{employees, appUsers, zones, qrCheckins, presenceSessions},
           qrService{
@@ -64,7 +68,32 @@ struct MongoApiRuntimeComposition::State {
               [] { return qr::QrCheckInService::Clock::now(); },
               this->config.apiRuntime.qrPresenceDuration
           },
-          policyAlarmService{employees, accessPolicies, machines, alarms},
+          pushNotificationService{pushSubscriptions, pushDeliveries},
+          unidentifiedPersonWatchdog{
+              cameraIdentityService,
+              cameraObjectTracks,
+              zones,
+              alarms,
+              [this](const domain::Alarm& alarm) {
+                  pushNotificationService.queueAlarmNotifications(
+                      alarm,
+                      std::chrono::system_clock::now()
+                  );
+              },
+              this->config.apiRuntime.apiSettings.unidentifiedIdentityGracePeriod
+          },
+          policyAlarmService{
+              employees,
+              accessPolicies,
+              machines,
+              alarms,
+              [this](const domain::Alarm& alarm) {
+                  pushNotificationService.queueAlarmNotifications(
+                      alarm,
+                      std::chrono::system_clock::now()
+                  );
+              }
+          },
           xprotectService{
               [this](const xprotect::XProtectLineCrossingCommand& command) {
                   return resolveXProtectZone(command);
@@ -114,9 +143,13 @@ struct MongoApiRuntimeComposition::State {
     infrastructure::mongodb::repositories::MongoPresenceSessionRepository presenceSessions;
     infrastructure::mongodb::repositories::MongoCameraObjectTrackRepository cameraObjectTracks;
     infrastructure::mongodb::repositories::MongoTrackIdentityBindingRepository trackIdentityBindings;
+    infrastructure::mongodb::repositories::MongoPushSubscriptionRepository pushSubscriptions;
+    infrastructure::mongodb::repositories::MongoPushNotificationDeliveryRepository pushDeliveries;
     identity::CameraIdentityService cameraIdentityService;
     presence::PresenceSessionService presenceService;
     qr::QrCheckInService qrService;
+    notification::PushNotificationService pushNotificationService;
+    identity::UnidentifiedPersonWatchdog unidentifiedPersonWatchdog;
     xprotect::XProtectPolicyAlarmService policyAlarmService;
     xprotect::XProtectLineCrossingService xprotectService;
 };
@@ -145,7 +178,7 @@ CameraObjectRoutes::ObservationHandler
 MongoApiRuntimeComposition::createCameraObjectObservationHandler() const {
     const auto state = state_;
     return [state](const identity::CameraObjectObservation& observation) {
-        return state->cameraIdentityService.observe(observation);
+        return state->unidentifiedPersonWatchdog.observe(observation);
     };
 }
 

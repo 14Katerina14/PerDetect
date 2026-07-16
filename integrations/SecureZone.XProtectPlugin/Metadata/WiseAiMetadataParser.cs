@@ -12,6 +12,7 @@ namespace SecureZone.XProtectPlugin.Metadata
         public string ObjectId { get; set; }
         public string ObjectType { get; set; }
         public DateTime ObservedAtUtc { get; set; }
+        public string Status { get; set; }
     }
 
     internal sealed class RawLineCrossing
@@ -25,6 +26,7 @@ namespace SecureZone.XProtectPlugin.Metadata
 
     internal sealed class ParsedWiseAiMetadata
     {
+        public bool HasVideoAnalyticsFrame { get; set; }
         public List<HumanObjectObservation> Humans { get; } = new List<HumanObjectObservation>();
         public List<RawLineCrossing> LineCrossings { get; } = new List<RawLineCrossing>();
     }
@@ -39,6 +41,7 @@ namespace SecureZone.XProtectPlugin.Metadata
             XDocument document = XDocument.Parse(xml, LoadOptions.None);
             foreach (XElement frame in document.Descendants().Where(x => x.Name.LocalName == "Frame"))
             {
+                result.HasVideoAnalyticsFrame = true;
                 DateTime observedAt = ReadUtc(frame.Attribute("UtcTime") == null ? null : frame.Attribute("UtcTime").Value);
                 foreach (XElement cameraObject in frame.Elements().Where(x => x.Name.LocalName == "Object"))
                 {
@@ -53,7 +56,8 @@ namespace SecureZone.XProtectPlugin.Metadata
                             CameraId = cameraId,
                             ObjectId = objectId,
                             ObjectType = objectType,
-                            ObservedAtUtc = observedAt
+                            ObservedAtUtc = observedAt,
+                            Status = "active"
                         });
                     }
                 }

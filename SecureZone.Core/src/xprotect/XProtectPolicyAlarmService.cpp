@@ -71,12 +71,14 @@ XProtectPolicyAlarmService::XProtectPolicyAlarmService(
     repository::IEmployeeRepository& employeeRepository,
     repository::IAccessPolicyRepository& accessPolicyRepository,
     repository::IMachineRepository& machineRepository,
-    repository::IAlarmRepository& alarmRepository
+    repository::IAlarmRepository& alarmRepository,
+    AlarmCreatedNotifier alarmCreatedNotifier
 ) : employeeRepository_{employeeRepository},
     accessPolicyRepository_{accessPolicyRepository},
     machineRepository_{machineRepository},
     alarmRepository_{alarmRepository},
-    alarmPersistenceService_{alarmRepository} {
+    alarmPersistenceService_{alarmRepository},
+    alarmCreatedNotifier_{std::move(alarmCreatedNotifier)} {
 }
 
 XProtectLineCrossingDecision XProtectPolicyAlarmService::evaluate(
@@ -189,6 +191,16 @@ XProtectLineCrossingDecision XProtectPolicyAlarmService::evaluate(
         context,
         command.receivedAt
     );
+
+    if (persistenceAction == alarm::AlarmPersistenceAction::Created && alarmCreatedNotifier_) {
+        const auto createdAlarm = alarmRepository_.findActiveByTrackAndZone(
+            zoneEntryEvent.trackId,
+            zone.zoneId
+        );
+        if (createdAlarm.has_value()) {
+            alarmCreatedNotifier_(*createdAlarm);
+        }
+    }
 
     if (accessDecision.shouldCreateAlarm) {
         return result(

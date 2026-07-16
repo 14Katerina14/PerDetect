@@ -5,6 +5,10 @@
 #include <mongocxx/options/update.hpp>
 
 #include <utility>
+#include <cstdint>
+#include <exception>
+#include <vector>
+#include <mongocxx/options/find.hpp>
 
 #include "securezone/infrastructure/mongodb/MongoDocumentMappers.h"
 
@@ -103,6 +107,20 @@ std::optional<domain::Zone> MongoZoneRepository::findActiveByXProtectEventName(
     return mapZoneDocument(result->view());
 }
 
+std::optional<domain::Zone> MongoZoneRepository::findActiveSafeByCameraId(
+    const std::string& cameraId
+) const {
+    auto result = zonesCollection_.find_one(
+        bsoncxx::builder::basic::make_document(
+            bsoncxx::builder::basic::kvp("cameraId", cameraId),
+            bsoncxx::builder::basic::kvp("type", "safe"),
+            bsoncxx::builder::basic::kvp(StatusField, ActiveStatus)
+        )
+    );
+    if (!result) return std::nullopt;
+    return mapZoneDocument(result->view());
+}
+
 bool MongoZoneRepository::save(const domain::Zone& zone) {
     bsoncxx::builder::basic::document filter;
     filter.append(bsoncxx::builder::basic::kvp(ZoneIdField, zone.zoneId));
@@ -114,6 +132,31 @@ bool MongoZoneRepository::save(const domain::Zone& zone) {
     mongocxx::options::update options;
     options.upsert(true);
     return zonesCollection_.update_one(filter.view(), update.view(), options).has_value();
+}
+
+std::vector<domain::Zone> MongoZoneRepository::findAll(
+    std::size_t limit,
+    const std::optional<std::string>& cameraId
+) const {
+    bsoncxx::builder::basic::document filter;
+    if (cameraId.has_value() && !cameraId->empty()) {
+        filter.append(bsoncxx::builder::basic::kvp("cameraId", *cameraId));
+    }
+
+    mongocxx::options::find options;
+    options.sort(bsoncxx::builder::basic::make_document(
+        bsoncxx::builder::basic::kvp("name", 1)
+    ));
+    options.limit(static_cast<std::int64_t>(limit));
+
+    std::vector<domain::Zone> zones;
+    for (const auto& document : zonesCollection_.find(filter.view(), options)) {
+        try {
+            zones.push_back(mapZoneDocument(document));
+        } catch (const std::exception&) {
+        }
+    }
+    return zones;
 }
 
 }

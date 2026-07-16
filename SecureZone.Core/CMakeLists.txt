@@ -12,9 +12,15 @@ add_library(SecureZoneCore
     src/decision/DecisionEngine.cpp
     src/identity/RolePermissionService.cpp
     src/identity/CameraIdentityService.cpp
+    src/identity/UnidentifiedPersonWatchdog.cpp
     src/machine/MachineStatusService.cpp
+    src/notification/PushNotificationService.cpp
+    src/notification/PushNotificationWorker.cpp
     src/presence/PresenceSessionService.cpp
     src/qr/QrCheckInService.cpp
+    src/query/ActiveAlarmQueryService.cpp
+    src/query/ActivePresenceQueryService.cpp
+    src/query/ZoneStatusQueryService.cpp
     src/webhook/WebhookNotificationService.cpp
     src/webhook/WebhookDeliveryService.cpp
     src/xprotect/XProtectLineCrossingService.cpp
@@ -36,6 +42,9 @@ set(SECUREZONE_CORE_TESTS
     XProtectLineCrossingServiceTests
     XProtectPolicyAlarmServiceTests
     CameraIdentityServiceTests
+    PushNotificationTests
+    ManagerReadModelTests
+    UnidentifiedPersonWatchdogTests
 )
 
 foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
@@ -51,6 +60,12 @@ foreach(test_name IN LISTS SECUREZONE_CORE_TESTS)
         set(test_source tests/xprotect/XProtectPolicyAlarmServiceTests.cpp)
     elseif(test_name STREQUAL "CameraIdentityServiceTests")
         set(test_source tests/identity/CameraIdentityServiceTests.cpp)
+    elseif(test_name STREQUAL "PushNotificationTests")
+        set(test_source tests/notification/PushNotificationTests.cpp)
+    elseif(test_name STREQUAL "ManagerReadModelTests")
+        set(test_source tests/query/ManagerReadModelTests.cpp)
+    elseif(test_name STREQUAL "UnidentifiedPersonWatchdogTests")
+        set(test_source tests/identity/UnidentifiedPersonWatchdogTests.cpp)
     else()
         set(test_source tests/${test_name}.cpp)
     endif()

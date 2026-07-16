@@ -8,10 +8,13 @@
 
 #include "securezone/domain/Alarm.h"
 #include "securezone/repository/IAlarmRepository.h"
+#include "securezone/repository/IAlarmReadRepository.h"
 
 namespace securezone::infrastructure::mongodb::repositories {
 
-class MongoAlarmRepository final : public repository::IAlarmRepository {
+class MongoAlarmRepository final
+    : public repository::IAlarmRepository,
+      public repository::IAlarmReadRepository {
 public:
     explicit MongoAlarmRepository(mongocxx::collection alarmsCollection);
 
@@ -21,6 +24,11 @@ public:
     ) const override;
 
     std::size_t countActiveByZone(const std::string& zoneId) const override;
+
+    std::vector<domain::Alarm> findActive(
+        std::size_t limit,
+        const std::optional<std::string>& zoneId = std::nullopt
+    ) const override;
 
     void create(const domain::Alarm& alarm) override;
 

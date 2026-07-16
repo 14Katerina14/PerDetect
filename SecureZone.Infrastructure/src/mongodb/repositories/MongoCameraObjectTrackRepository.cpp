@@ -38,6 +38,32 @@ void MongoCameraObjectTrackRepository::upsertObservation(const domain::CameraObj
     );
 }
 
+std::optional<domain::CameraObjectTrack>
+MongoCameraObjectTrackRepository::findByCameraAndObject(
+    const std::string& cameraId,
+    const std::string& objectId
+) const {
+    const auto document = collection_.find_one(
+        make_document(kvp("cameraId", cameraId), kvp("objectId", objectId))
+    );
+    if (!document) return std::nullopt;
+    return mapCameraObjectTrackDocument(document->view());
+}
+
+void MongoCameraObjectTrackRepository::markLost(
+    const std::string& cameraId,
+    const std::string& objectId,
+    std::chrono::system_clock::time_point lostAt
+) {
+    collection_.update_one(
+        make_document(kvp("cameraId", cameraId), kvp("objectId", objectId)),
+        make_document(kvp("$set", make_document(
+            kvp("lastSeenAt", bsoncxx::types::b_date{lostAt}),
+            kvp("status", "lost")
+        )))
+    );
+}
+
 std::vector<domain::CameraObjectTrack> MongoCameraObjectTrackRepository::findRecentHumans(
     const std::string& cameraId,
     std::chrono::system_clock::time_point seenAfter,

@@ -87,14 +87,15 @@ namespace SecureZone.XProtectPlugin
             }
         }
 
-        public async Task ObserveAsync(HumanObjectObservation observation)
+        public async Task<SecureZoneDecisionResponse> ObserveAsync(HumanObjectObservation observation)
         {
             var payload = new
             {
                 cameraId = observation.CameraId,
                 objectId = observation.ObjectId,
                 objectType = observation.ObjectType,
-                observedAt = observation.ObservedAtUtc.ToString("O")
+                observedAt = observation.ObservedAtUtc.ToString("O"),
+                status = observation.Status
             };
             using (var request = new HttpRequestMessage(HttpMethod.Post, settings.ObjectObservationEndpoint))
             {
@@ -103,8 +104,15 @@ namespace SecureZone.XProtectPlugin
                     request.Headers.Add("X-SecureZone-Api-Key", settings.ApiKey);
                 using (HttpResponseMessage response = await httpClient.SendAsync(request).ConfigureAwait(false))
                 {
+                    string body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    SecureZoneDecisionResponse result = serializer.Deserialize<SecureZoneDecisionResponse>(body);
+                    if (result == null)
+                        throw new InvalidOperationException("Object observation returned an empty decision response.");
                     if (!response.IsSuccessStatusCode)
-                        throw new HttpRequestException("Object observation returned HTTP " + (int)response.StatusCode + ".");
+                        throw new HttpRequestException(
+                            "Object observation returned HTTP " + (int)response.StatusCode +
+                            " with status '" + (result.status ?? "unknown") + "'.");
+                    return result;
                 }
             }
         }
