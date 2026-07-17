@@ -95,7 +95,7 @@ export function LoginScreen({ defaultServerUrl, onLogin, onServerVerified }: Pro
               <Pressable disabled={checking} onPress={() => void checkConnection()} style={styles.testButton}>
                 {checking ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.testText}>Test server</Text>}
               </Pressable>
-              <Pressable onPress={() => setServerUrl('http://192.168.137.1:18080')} style={styles.hotspotButton}>
+              <Pressable onPress={() => setServerUrl('http://YOUR-LAPTOP-IP:18080')} style={styles.hotspotButton}>
                 <Text style={styles.hotspotText}>Use demo hotspot</Text>
               </Pressable>
             </View>

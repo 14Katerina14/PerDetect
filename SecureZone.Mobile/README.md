@@ -92,7 +92,7 @@ The automated local contract check is:
 2. Windows Firewall allows inbound TCP 18080 on the backend laptop.
 3. The XProtect plug-in uses the backend laptop LAN IPv4 address.
 4. Phones use either the reachable company Wi-Fi address or the backend laptop
-   hotspot address `http://192.168.137.1:18080`.
+   hotspot address `http://YOUR-LAPTOP-IP:18080`.
 5. `/health` and `/version` must pass from both the phone and XProtect laptop.
 6. A QR retry is valid for only 30 seconds; expired scans must be repeated while
    the worker remains visible to the camera.
