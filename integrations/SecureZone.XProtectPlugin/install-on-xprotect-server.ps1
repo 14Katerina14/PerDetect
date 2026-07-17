@@ -7,7 +7,8 @@ param(
     [ValidateRange(1, 60)]
     [int]$MetadataHeartbeatSeconds = 5,
     [ValidateRange(2, 120)]
-    [int]$MetadataLostAfterSeconds = 8
+    [int]$MetadataLostAfterSeconds = 8,
+    [string]$BackupRoot = "C:\ProgramData\SecureZone\XProtectPlugin\backups"
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,6 +31,36 @@ if (-not [Uri]::TryCreate($ApiUrl, [UriKind]::Absolute, [ref]$apiUri) -or
     throw "ApiUrl must be an absolute HTTP or HTTPS URL."
 }
 
+$environmentNames = @(
+    "SECUREZONE_API_URL",
+    "SECUREZONE_XPROTECT_API_KEY",
+    "SECUREZONE_API_TIMEOUT_SECONDS",
+    "SECUREZONE_METADATA_HEARTBEAT_SECONDS",
+    "SECUREZONE_METADATA_LOST_AFTER_SECONDS"
+)
+$backupFolder = Join-Path $BackupRoot ([DateTime]::UtcNow.ToString("yyyyMMdd-HHmmssfff"))
+$previousEnvironment = @{}
+foreach ($name in $environmentNames) {
+    $previousEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, "Machine")
+}
+
+New-Item -ItemType Directory -Path $backupFolder -Force | Out-Null
+$previousFiles = @()
+foreach ($fileName in @("SecureZone.XProtectPlugin.dll", "plugin.def")) {
+    $installedFile = Join-Path $PluginFolder $fileName
+    if (Test-Path -LiteralPath $installedFile -PathType Leaf) {
+        Copy-Item -LiteralPath $installedFile -Destination $backupFolder -Force
+        $previousFiles += $fileName
+    }
+}
+
+@{
+    createdAtUtc = [DateTime]::UtcNow.ToString("o")
+    pluginFolder = $PluginFolder
+    previousFiles = $previousFiles
+    previousEnvironment = $previousEnvironment
+} | ConvertTo-Json -Depth 4 | Set-Content -LiteralPath (Join-Path $backupFolder "rollback-state.json") -Encoding UTF8
+
 New-Item -ItemType Directory -Path $PluginFolder -Force | Out-Null
 Copy-Item -LiteralPath $dllPath -Destination $PluginFolder -Force
 Copy-Item -LiteralPath $pluginDefPath -Destination $PluginFolder -Force
@@ -50,6 +81,8 @@ Write-Host "SecureZone XProtect decision bridge installed to:"
 Write-Host "  $PluginFolder"
 Write-Host "Backend endpoint:"
 Write-Host "  $ApiUrl"
+Write-Host "Rollback backup:"
+Write-Host "  $backupFolder"
 
 if ([string]::IsNullOrWhiteSpace($ApiKey)) {
     Write-Warning "No API key was supplied. Configure the same SECUREZONE_XPROTECT_API_KEY on the plugin and backend before production use."

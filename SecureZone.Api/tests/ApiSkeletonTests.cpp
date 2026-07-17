@@ -439,6 +439,30 @@ void applicationRoutesQrCheckInRequestsToConfiguredHandler() {
     assert(response.body.find(R"("status":"extended")") != std::string::npos);
 }
 
+void qrRouteReturnsTheCachedResponseForTheSameRequestId() {
+    int calls = 0;
+    ApiServer server{{}, ApiRouteHandlers{
+        [&calls](const securezone::qr::QrCheckInCommand&) {
+            ++calls;
+            return securezone::qr::QrCheckInResult{true, "started", "SESSION-IDEMPOTENT", {}, "human-1", "binding-1"};
+        }, {}, {}, {}, authorizeScanner
+    }};
+
+    const HttpRequest request{
+        "POST",
+        "/api/qr/check-in",
+        R"({"employeeId":"EMP-001","zoneId":"ZONE-001","cameraId":"CAM-001","requestId":"mobile-idempotency-test"})",
+        {}
+    };
+    const auto first = server.handle(request);
+    const auto repeated = server.handle(request);
+
+    assert(first.statusCode == 201);
+    assert(repeated.statusCode == 201);
+    assert(repeated.body == first.body);
+    assert(calls == 1);
+}
+
 void qrRouteMapsRejectedStatusesToHttpResponses() {
     const std::vector<std::pair<std::string, int>> cases{
         {"invalid_request", 400},
@@ -878,6 +902,7 @@ int main() {
     applicationExposesVersionAndBuildId();
     applicationRoutesQrCheckInRequests();
     applicationRoutesQrCheckInRequestsToConfiguredHandler();
+    qrRouteReturnsTheCachedResponseForTheSameRequestId();
     qrRouteMapsRejectedStatusesToHttpResponses();
     applicationRoutesXProtectLineCrossingRequests();
     applicationRoutesXProtectLineCrossingRequestsToConfiguredHandler();

@@ -170,3 +170,33 @@ jobs:
         shell: pwsh
         run: |
           & integrations/SecureZone.XProtectPlugin.ContractTests/bin/Release/SecureZone.XProtectPlugin.ContractTests.exe
+
+  mobile:
+    name: Mobile typecheck and tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: SecureZone.Mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: SecureZone.Mobile/pnpm-lock.yaml
+
+      - name: Install mobile dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck and test mobile app
+        run: pnpm check

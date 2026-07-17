@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "SecureZone",
+    "slug": "securezone-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "updates": {
+      "enabled": false
+    },
+    "splash": {
+      "backgroundColor": "#F8FAFD"
+    },
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.securezone.mobile",
+      "usesCleartextTraffic": true,
+      "permissions": ["CAMERA"],
+      "adaptiveIcon": {
+        "backgroundColor": "#F8FAFD"
+      }
+    },
+    "plugins": [
+      "./plugins/withCleartextTraffic",
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "SecureZone uses the camera only to scan employee QR codes.",
+          "recordAudioAndroid": false
+        }
+      ]
+    ]
+  }
+}

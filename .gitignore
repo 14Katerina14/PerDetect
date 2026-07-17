@@ -4,3 +4,9 @@ out/
 bin/
 obj/
 .env
+node_modules/
+.expo/
+dist/
+deployment/office/artifacts/
+deployment/office/private/
+deployment/reports/
