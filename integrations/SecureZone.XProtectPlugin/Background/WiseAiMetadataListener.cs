@@ -25,10 +25,14 @@ namespace SecureZone.XProtectPlugin.Background
         private readonly SecureZonePluginSettings settings;
         private readonly Action<LineCrossingEventSnapshot, SecureZoneDecisionResponse> decisionHandler;
         private readonly List<MetadataLiveSource> sources = new List<MetadataLiveSource>();
+        private readonly HashSet<Guid> metadataDeviceIds = new HashSet<Guid>();
+        private readonly object sourcesSync = new object();
         private readonly object trackedHumansSync = new object();
         private readonly Dictionary<string, TrackedHuman> trackedHumans =
             new Dictionary<string, TrackedHuman>();
         private Timer lostObjectTimer;
+        private Timer metadataDiscoveryTimer;
+        private bool disposed;
 
         public WiseAiMetadataListener(
             SecureZoneDecisionClient client,
@@ -44,26 +48,74 @@ namespace SecureZone.XProtectPlugin.Background
 
         public void Start()
         {
-            foreach (Item item in Configuration.Instance.GetItemsByKind(Kind.Metadata))
-            {
-                Item cameraSource = ResolveCamera(item);
-                string cameraId = cameraSource == null
-                    ? item.FQID.ObjectId.ToString("D")
-                    : cameraSource.FQID.ObjectId.ToString("D");
-                var source = new MetadataLiveSource(item);
-                source.LiveModeStart = true;
-                source.Init();
-                source.LiveContentEvent += (sender, content) => OnMetadata(cameraId, cameraSource, content);
-                source.ErrorEvent += (sender, exception) => EnvironmentManager.Instance.Log(
-                    true, "SecureZone.Metadata", "Metadata source error for '" + item.Name + "': " + exception.Message);
-                sources.Add(source);
-            }
+            DiscoverMetadataSources(true);
+            metadataDiscoveryTimer = new Timer(
+                state => DiscoverMetadataSources(false),
+                null,
+                TimeSpan.FromSeconds(10),
+                TimeSpan.FromSeconds(10));
 
             lostObjectTimer = new Timer(SweepLostObjects, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
-            EnvironmentManager.Instance.Log(false, "SecureZone.Metadata",
-                "Listening to " + sources.Count + " XProtect metadata device(s). Human heartbeat=" +
-                settings.MetadataHeartbeat.TotalSeconds + "s, lost-after=" +
-                settings.MetadataLostAfter.TotalSeconds + "s.");
+        }
+
+        private void DiscoverMetadataSources(bool alwaysLog)
+        {
+            lock (sourcesSync)
+            {
+                if (disposed) return;
+
+                int previousCount = sources.Count;
+                IEnumerable<Item> metadataItems;
+                try
+                {
+                    metadataItems = Configuration.Instance.GetItemsByKind(Kind.Metadata);
+                }
+                catch (Exception exception)
+                {
+                    EnvironmentManager.Instance.Log(
+                        true,
+                        "SecureZone.Metadata",
+                        "Could not discover XProtect metadata devices: " + exception.Message);
+                    return;
+                }
+
+                foreach (Item item in metadataItems)
+                {
+                    Guid metadataDeviceId = item.FQID.ObjectId;
+                    if (metadataDeviceIds.Contains(metadataDeviceId)) continue;
+
+                    try
+                    {
+                        Item cameraSource = ResolveCamera(item);
+                        string cameraId = cameraSource == null
+                            ? metadataDeviceId.ToString("D")
+                            : cameraSource.FQID.ObjectId.ToString("D");
+                        var source = new MetadataLiveSource(item);
+                        source.LiveModeStart = true;
+                        source.Init();
+                        source.LiveContentEvent += (sender, content) => OnMetadata(cameraId, cameraSource, content);
+                        source.ErrorEvent += (sender, exception) => EnvironmentManager.Instance.Log(
+                            true, "SecureZone.Metadata", "Metadata source error for '" + item.Name + "': " + exception.Message);
+                        sources.Add(source);
+                        metadataDeviceIds.Add(metadataDeviceId);
+                    }
+                    catch (Exception exception)
+                    {
+                        EnvironmentManager.Instance.Log(
+                            true,
+                            "SecureZone.Metadata",
+                            "Could not initialize metadata device '" + item.Name + "': " + exception.Message);
+                    }
+                }
+
+                if (alwaysLog || previousCount != sources.Count)
+                {
+                    EnvironmentManager.Instance.Log(false, "SecureZone.Metadata",
+                        "Listening to " + sources.Count + " XProtect metadata device(s). Human heartbeat=" +
+                        settings.MetadataHeartbeat.TotalSeconds + "s, lost-after=" +
+                        settings.MetadataLostAfter.TotalSeconds + "s.");
+                }
+            }
         }
 
         private static Item ResolveCamera(Item metadataItem)
@@ -191,13 +243,23 @@ namespace SecureZone.XProtectPlugin.Background
 
         public void Dispose()
         {
+            if (metadataDiscoveryTimer != null)
+            {
+                metadataDiscoveryTimer.Dispose();
+                metadataDiscoveryTimer = null;
+            }
             if (lostObjectTimer != null)
             {
                 lostObjectTimer.Dispose();
                 lostObjectTimer = null;
             }
-            foreach (MetadataLiveSource source in sources) source.Close();
-            sources.Clear();
+            lock (sourcesSync)
+            {
+                disposed = true;
+                foreach (MetadataLiveSource source in sources) source.Close();
+                sources.Clear();
+                metadataDeviceIds.Clear();
+            }
             lock (trackedHumansSync) trackedHumans.Clear();
         }
     }
