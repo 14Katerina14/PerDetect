@@ -1,0 +1,50 @@
+SECUREZONE OFFICE INSTALLATION
+==============================
+
+PREREQUISITES
+- SecureZone backend is running on the developer laptop at TCP port 18080.
+- The company laptop can open http://MYIP:18080/health.
+- Run all commands below from Windows PowerShell as Administrator.
+- Keep securezone-api-key.txt private. Do not commit or share it publicly.
+
+INSTALL
+1. Extract this package on the company XProtect laptop.
+2. Open Administrator PowerShell in the extracted directory.
+3. Replace MYIP with the current Wi-Fi IPv4 address of the backend laptop:
+
+   Set-ExecutionPolicy -Scope Process Bypass -Force
+   .\install-office-plugin.ps1 -BackendHost "MYIP" -BackendPort 18080
+
+The installer verifies backend health, stops the XProtect Event Server,
+creates a timestamped rollback backup, installs plug-in version 2.0.0.0,
+sets the URL and API key, and starts the Event Server again.
+
+PREFLIGHT
+
+   .\preflight-office.ps1 -BackendHost "MYIP" -BackendPort 18080
+
+All checks must show PASS. The report is written beside the script.
+
+XPROTECT RULES
+Open XProtect-RULES.txt and configure both rules in Management Client.
+The physical speaker must be selected manually because its XProtect device
+identifier is specific to the company installation.
+
+ROLLBACK
+If the new plug-in prevents the Event Server from operating correctly:
+
+   .\rollback-office-plugin.ps1
+
+Rollback restores the previous DLL, plugin.def, environment values, and the
+previous Event Server running state from the newest timestamped backup.
+
+BACKEND VERIFICATION
+On the backend laptop:
+
+   Invoke-RestMethod http://localhost:18080/health
+   Invoke-RestMethod http://localhost:18080/version
+
+On the company laptop, replace MYIP:
+
+   Invoke-RestMethod http://MYIP:18080/health
+   Invoke-RestMethod http://MYIP:18080/version
