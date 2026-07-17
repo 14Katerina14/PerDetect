@@ -5,6 +5,7 @@
 #include <mongocxx/options/update.hpp>
 
 #include <utility>
+#include <cctype>
 #include <cstdint>
 #include <exception>
 #include <vector>
@@ -20,6 +21,42 @@ constexpr char ZoneIdField[] = "zoneId";
 constexpr char StatusField[] = "status";
 constexpr char ActiveStatus[] = "active";
 constexpr char XProtectEventNameField[] = "xprotectEventName";
+constexpr char IntegerPlaceholder[] = "<int>";
+
+bool matchesXProtectEventPattern(
+    const std::string& pattern,
+    const std::string& eventName
+) {
+    std::size_t patternOffset = 0;
+    std::size_t eventOffset = 0;
+
+    while (true) {
+        const auto placeholder = pattern.find(IntegerPlaceholder, patternOffset);
+        const auto prefixLength = placeholder == std::string::npos
+            ? pattern.size() - patternOffset
+            : placeholder - patternOffset;
+
+        if (eventName.compare(eventOffset, prefixLength, pattern, patternOffset, prefixLength) != 0) {
+            return false;
+        }
+        eventOffset += prefixLength;
+
+        if (placeholder == std::string::npos) {
+            return eventOffset == eventName.size();
+        }
+
+        const auto digitsBegin = eventOffset;
+        while (eventOffset < eventName.size()
+            && std::isdigit(static_cast<unsigned char>(eventName[eventOffset]))) {
+            ++eventOffset;
+        }
+        if (eventOffset == digitsBegin) {
+            return false;
+        }
+
+        patternOffset = placeholder + sizeof(IntegerPlaceholder) - 1;
+    }
+}
 
 const char* zoneTypeToString(domain::ZoneType type) {
     switch (type) {
@@ -100,11 +137,27 @@ std::optional<domain::Zone> MongoZoneRepository::findActiveByXProtectEventName(
     );
 
     auto result = zonesCollection_.find_one(filter.view());
-    if (!result) {
-        return std::nullopt;
+    if (result) {
+        return mapZoneDocument(result->view());
     }
 
-    return mapZoneDocument(result->view());
+    auto activeZones = zonesCollection_.find(
+        bsoncxx::builder::basic::make_document(
+            bsoncxx::builder::basic::kvp(StatusField, ActiveStatus)
+        )
+    );
+    for (const auto& document : activeZones) {
+        try {
+            auto zone = mapZoneDocument(document);
+            if (!zone.xprotectEventName.empty()
+                && matchesXProtectEventPattern(zone.xprotectEventName, xprotectEventName)) {
+                return zone;
+            }
+        } catch (const std::exception&) {
+        }
+    }
+
+    return std::nullopt;
 }
 
 std::optional<domain::Zone> MongoZoneRepository::findActiveSafeByCameraId(
