@@ -21,10 +21,8 @@ export function AlarmScreen({ session, onLogout }: Props) {
 
   const refresh = useCallback(async (): Promise<boolean> => {
     try {
-      const [activeResponse, recentResponse] = await Promise.all([
-        api.activeAlarms(session.serverUrl, session.accessToken),
-        api.recentAlarms(session.serverUrl, session.accessToken),
-      ]);
+      const activeResponse = await api.activeAlarms(session.serverUrl, session.accessToken);
+      const recentResponse = await api.recentAlarms(session.serverUrl, session.accessToken);
       setActive(activeResponse.alarms);
       setRecent(recentResponse.alarms);
       setLastUpdated(new Date());

@@ -101,9 +101,13 @@ bool isRegisteredRuntimeRoute(const httplib::Request& request) {
 
 bool runHttpRuntimeServer(const ApiApplication& application) {
     httplib::Server server;
-    const auto handle = [&application](const httplib::Request& request, httplib::Response& response) {
+    std::mutex applicationMutex;
+    const auto handle = [&application, &applicationMutex](const httplib::Request& request, httplib::Response& response) {
         const auto startedAt = std::chrono::steady_clock::now();
         try {
+            // The runtime currently owns one mongocxx::client. Serialize application
+            // access until the persistence layer is migrated to mongocxx::pool.
+            std::lock_guard<std::mutex> lock{applicationMutex};
             writeApiResponse(application.handle(toApiRequest(request)), response);
         } catch (const std::exception&) {
             response.status = 500;
