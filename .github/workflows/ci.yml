@@ -1,0 +1,202 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "**"
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Secret scan
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v rg >/dev/null 2>&1; then
+            sudo apt-get update
+            sudo apt-get install -y ripgrep
+          fi
+
+          pattern='(securezone[_-]?pass|Test123|MyUser|mongodb://[^[:space:]]+:[^[:space:]@]+@|XPCO|192\.168\.|SECUREZONE_JWT_SECRET[=:][^$<[:space:]])'
+
+          if rg -n --hidden --glob '!.git/**' --glob '!.github/workflows/ci.yml' --glob '!*.example' "$pattern" .; then
+            echo "Potential secret or environment-specific value found. Replace it with an environment variable or placeholder."
+            exit 1
+          fi
+
+  docker-compose:
+    name: Docker Compose validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Validate MongoDB Docker Compose
+        shell: bash
+        env:
+          MONGO_HOST_PORT: "27018"
+          MONGO_INITDB_ROOT_USERNAME: "ci_user"
+          MONGO_INITDB_ROOT_PASSWORD: "ci_password"
+          MONGO_INITDB_DATABASE: "securezone"
+        run: |
+          set -euo pipefail
+          docker compose -f deployment/mongodb/docker-compose.yml config
+
+      - name: Validate runtime Docker Compose
+        shell: bash
+        env:
+          MONGO_INITDB_ROOT_USERNAME: ci_user
+          MONGO_INITDB_ROOT_PASSWORD: ci_password
+          MONGO_INITDB_DATABASE: securezone
+          SECUREZONE_MONGO_URI: mongodb://ci_user:ci_password@mongodb:27017/securezone?authSource=admin
+          SECUREZONE_XPROTECT_API_KEY: ci-test-only-api-key
+          SECUREZONE_JWT_SECRET: ci-jwt-secret-placeholder-at-least-32-bytes
+          SECUREZONE_API_HOST_PORT: "18080"
+        run: |
+          set -euo pipefail
+          docker compose -f deployment/runtime/docker-compose.yml config
+
+  backend-core:
+    name: Core build and tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure CMake core build
+        run: |
+          cmake -S . -B build -DSECUREZONE_BUILD_MONGODB_INFRA=OFF -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build core targets
+        run: |
+          cmake --build build --config Debug --parallel 2
+
+      - name: Run core tests
+        run: |
+          ctest --test-dir build -C Debug --output-on-failure
+
+  backend-mongodb:
+    name: MongoDB infrastructure build and mapper tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Install native dependency build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y autoconf autoconf-archive automake build-essential libtool
+
+      - name: Fetch pinned vcpkg baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          baseline="$(python3 -c 'import json; print(json.load(open("vcpkg.json"))["builtin-baseline"])')"
+          git -C "$VCPKG_INSTALLATION_ROOT" fetch --depth=1 origin "$baseline"
+          git -C "$VCPKG_INSTALLATION_ROOT" cat-file -e "$baseline:versions/baseline.json"
+
+      - name: Configure CMake MongoDB infrastructure build
+        run: |
+          cmake -S . -B build-mongodb \
+            -DSECUREZONE_BUILD_MONGODB_INFRA=ON \
+            -DSECUREZONE_BUILD_MONGODB_TESTS=ON \
+            -DSECUREZONE_BUILD_MONGODB_INTEGRATION_TESTS=OFF \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_TOOLCHAIN_FILE="$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake"
+
+      - name: Build MongoDB infrastructure targets
+        run: |
+          cmake --build build-mongodb --config Debug --parallel 2
+
+      - name: Run MongoDB mapper tests
+        run: |
+          ctest --test-dir build-mongodb -C Debug -L "mongodb|auth" --output-on-failure
+
+  backend-container:
+    name: Backend container build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Build SecureZone backend image
+        run: |
+          docker build --file deployment/backend/Dockerfile --tag securezone-api:ci .
+
+  xprotect-plugin-contract:
+    name: XProtect plug-in contract tests
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build plug-in contract tests
+        shell: pwsh
+        run: |
+          msbuild integrations/SecureZone.XProtectPlugin.ContractTests/SecureZone.XProtectPlugin.ContractTests.csproj `
+            /restore `
+            /p:Configuration=Release
+
+      - name: Run plug-in contract tests
+        shell: pwsh
+        run: |
+          & integrations/SecureZone.XProtectPlugin.ContractTests/bin/Release/SecureZone.XProtectPlugin.ContractTests.exe
+
+  mobile:
+    name: Mobile typecheck and tests
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: SecureZone.Mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Configure Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: SecureZone.Mobile/pnpm-lock.yaml
+
+      - name: Install mobile dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck and test mobile app
+        run: pnpm check

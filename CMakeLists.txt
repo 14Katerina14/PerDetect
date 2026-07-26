@@ -1,0 +1,28 @@
+cmake_minimum_required(VERSION 3.24)
+
+project(PerDetect VERSION 0.1.0 LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+enable_testing()
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(SecureZoneRuntimeDependencies)
+
+option(SECUREZONE_BUILD_MONGODB_INFRA "Build MongoDB infrastructure components" ON)
+option(
+    SECUREZONE_BUILD_HTTP_RUNTIME
+    "Build the production HTTP listener"
+    ${SECUREZONE_BUILD_MONGODB_INFRA}
+)
+
+add_subdirectory(SecureZone.Core)
+
+if(SECUREZONE_BUILD_MONGODB_INFRA)
+    add_subdirectory(SecureZone.Infrastructure)
+endif()
+
+add_subdirectory(SecureZone.Api)
+add_subdirectory(SecureZone.Tools)

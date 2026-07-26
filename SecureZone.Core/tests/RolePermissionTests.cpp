@@ -1,0 +1,3 @@
+#include <cassert>
+#include "securezone/identity/RolePermissionService.h"
+int main() { using namespace securezone::domain; securezone::identity::RolePermissionService service; RolePermission manager{"manager", {UiPermission::CanViewLiveCamera}}; RolePermission operatorRole{"operator", {UiPermission::CanAcknowledgeAlarm}}; RolePermission employee{"employee", {UiPermission::CanScanQr}}; assert(service.hasPermission(manager, UiPermission::CanViewLiveCamera)); assert(service.hasPermission(operatorRole, UiPermission::CanAcknowledgeAlarm)); assert(service.hasPermission(employee, UiPermission::CanScanQr)); assert(!service.hasPermission(employee, UiPermission::CanViewLiveCamera)); }

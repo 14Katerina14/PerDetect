@@ -1,0 +1,73 @@
+name: securezone-runtime
+
+services:
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    ports:
+      - "${MONGO_BIND_ADDRESS:-127.0.0.1}:${MONGO_HOST_PORT:-27018}:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME:?Set MONGO_INITDB_ROOT_USERNAME in .env}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD:?Set MONGO_INITDB_ROOT_PASSWORD in .env}
+      MONGO_INITDB_DATABASE: ${MONGO_INITDB_DATABASE:-securezone}
+    volumes:
+      - securezone-mongo-data:/data/db
+      - ../mongodb/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          mongosh --quiet --host 127.0.0.1
+          --username "$${MONGO_INITDB_ROOT_USERNAME}"
+          --password "$${MONGO_INITDB_ROOT_PASSWORD}"
+          --authenticationDatabase admin
+          --eval 'db.adminCommand({ ping: 1 })' >/dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - securezone
+
+  securezone-api:
+    image: securezone-api:local
+    restart: unless-stopped
+    init: true
+    stop_grace_period: 20s
+    build:
+      context: ../..
+      dockerfile: deployment/backend/Dockerfile
+      args:
+        SECUREZONE_BUILD_ID: ${SECUREZONE_BUILD_ID:-local}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    environment:
+      SECUREZONE_API_HOST: ${SECUREZONE_API_HOST:-0.0.0.0}
+      SECUREZONE_API_PORT: ${SECUREZONE_API_PORT:-8080}
+      SECUREZONE_MONGO_DATABASE: ${SECUREZONE_MONGO_DATABASE:-securezone}
+      SECUREZONE_MONGO_URI: ${SECUREZONE_MONGO_URI:?Set SECUREZONE_MONGO_URI in .env}
+      SECUREZONE_XPROTECT_API_KEY: ${SECUREZONE_XPROTECT_API_KEY:?Set SECUREZONE_XPROTECT_API_KEY in .env}
+      SECUREZONE_QR_PRESENCE_MINUTES: ${SECUREZONE_QR_PRESENCE_MINUTES:-2}
+      SECUREZONE_JWT_SECRET: ${SECUREZONE_JWT_SECRET?Set SECUREZONE_JWT_SECRET in .env}
+      SECUREZONE_JWT_TTL_MINUTES: ${SECUREZONE_JWT_TTL_MINUTES:-60}
+      SECUREZONE_UNIDENTIFIED_GRACE_SECONDS: ${SECUREZONE_UNIDENTIFIED_GRACE_SECONDS:-120}
+    ports:
+      - "${SECUREZONE_API_HOST_PORT:-18080}:8080"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - curl --fail --silent --show-error http://127.0.0.1:8080/health >/dev/null
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - securezone
+
+volumes:
+  securezone-mongo-data:
+
+networks:
+  securezone:
+    driver: bridge

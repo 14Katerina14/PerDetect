@@ -1,0 +1,26 @@
+SECUREZONE XPROTECT SPEAKER RULES
+=================================
+
+These rules must be created and enabled in XProtect Management Client.
+The physical speaker/output device must be selected on the company system.
+
+RULE 1 - START SPEAKER
+Trigger class: SecureZone
+Trigger type: SecureZoneViolationConfirmed
+Trigger name: SecureZone violation confirmed
+Action: Activate/start the external speaker or output device.
+Activation profile: Always during the demonstration.
+
+RULE 2 - STOP SPEAKER
+Trigger class: SecureZone
+Trigger type: SecureZoneViolationCleared
+Trigger name: SecureZone violation cleared
+Action: Deactivate/stop the same external speaker or output device.
+Activation profile: Always during the demonstration.
+
+VERIFY
+1. Both rules are enabled.
+2. Both rules select the same physical speaker/output device.
+3. Confirmed starts the device.
+4. Cleared stops the device.
+5. No old rule directly maps raw WiseAI LineCrossing to the speaker.

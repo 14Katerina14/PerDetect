@@ -1,0 +1,103 @@
+#include "securezone/infrastructure/mongodb/MongoRepositoryProvider.h"
+
+namespace securezone::infrastructure::mongodb {
+
+namespace {
+
+constexpr const char* AccessPoliciesCollection = "access_policies";
+constexpr const char* AlarmsCollection = "alarms";
+constexpr const char* AppUsersCollection = "app_users";
+constexpr const char* EmployeesCollection = "employees";
+constexpr const char* MachinesCollection = "machines";
+constexpr const char* PresenceSessionsCollection = "presence_sessions";
+constexpr const char* QrCheckinsCollection = "qr_checkins";
+constexpr const char* WebhookTargetsCollection = "webhook_targets";
+constexpr const char* ZonesCollection = "zones";
+constexpr const char* CameraObjectTracksCollection = "camera_object_tracks";
+constexpr const char* TrackIdentityBindingsCollection = "track_identity_bindings";
+constexpr const char* PushSubscriptionsCollection = "push_subscriptions";
+constexpr const char* PushNotificationDeliveriesCollection = "push_notification_deliveries";
+
+}
+
+MongoRepositoryProvider::MongoRepositoryProvider(MongoDbClient& client)
+    : client_{client} {
+}
+
+repositories::MongoEmployeeRepository MongoRepositoryProvider::employeeRepository() {
+    return repositories::MongoEmployeeRepository{
+        client_.database()[EmployeesCollection]
+    };
+}
+
+repositories::MongoAppUserRepository MongoRepositoryProvider::appUserRepository() {
+    return repositories::MongoAppUserRepository{
+        client_.database()[AppUsersCollection]
+    };
+}
+
+repositories::MongoZoneRepository MongoRepositoryProvider::zoneRepository() {
+    return repositories::MongoZoneRepository{
+        client_.database()[ZonesCollection]
+    };
+}
+
+repositories::MongoMachineRepository MongoRepositoryProvider::machineRepository() {
+    return repositories::MongoMachineRepository{
+        client_.database()[MachinesCollection]
+    };
+}
+
+repositories::MongoAccessPolicyRepository MongoRepositoryProvider::accessPolicyRepository() {
+    return repositories::MongoAccessPolicyRepository{
+        client_.database()[AccessPoliciesCollection]
+    };
+}
+
+repositories::MongoAlarmRepository MongoRepositoryProvider::alarmRepository() {
+    return repositories::MongoAlarmRepository{
+        client_.database()[AlarmsCollection]
+    };
+}
+
+repositories::MongoQrCheckinRepository MongoRepositoryProvider::qrCheckinRepository() {
+    return repositories::MongoQrCheckinRepository{
+        client_.database()[QrCheckinsCollection]
+    };
+}
+
+repositories::MongoPresenceSessionRepository MongoRepositoryProvider::presenceSessionRepository() {
+    return repositories::MongoPresenceSessionRepository{
+        client_.database()[PresenceSessionsCollection]
+    };
+}
+
+repositories::MongoWebhookTargetRepository MongoRepositoryProvider::webhookTargetRepository() {
+    return repositories::MongoWebhookTargetRepository{
+        client_.database()[WebhookTargetsCollection]
+    };
+}
+
+repositories::MongoCameraObjectTrackRepository MongoRepositoryProvider::cameraObjectTrackRepository() {
+    return repositories::MongoCameraObjectTrackRepository{client_.database()[CameraObjectTracksCollection]};
+}
+
+repositories::MongoTrackIdentityBindingRepository MongoRepositoryProvider::trackIdentityBindingRepository() {
+    return repositories::MongoTrackIdentityBindingRepository{client_.database()[TrackIdentityBindingsCollection]};
+}
+
+repositories::MongoPushSubscriptionRepository MongoRepositoryProvider::pushSubscriptionRepository() {
+    return repositories::MongoPushSubscriptionRepository{
+        client_.database()[AppUsersCollection],
+        client_.database()[PushSubscriptionsCollection]
+    };
+}
+
+repositories::MongoPushNotificationDeliveryRepository
+MongoRepositoryProvider::pushNotificationDeliveryRepository() {
+    return repositories::MongoPushNotificationDeliveryRepository{
+        client_.database()[PushNotificationDeliveriesCollection]
+    };
+}
+
+}

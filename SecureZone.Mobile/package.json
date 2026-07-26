@@ -1,0 +1,31 @@
+{
+  "name": "securezone-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "main": "expo/AppEntry",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "check": "pnpm typecheck && pnpm test",
+    "mock-api": "node scripts/mock-api.mjs",
+    "worker-qr": "node scripts/generate-worker-qr.mjs"
+  },
+  "dependencies": {
+    "expo": "57.0.6",
+    "expo-camera": "~57.0.3",
+    "expo-secure-store": "~57.0.1",
+    "expo-status-bar": "57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.0",
+    "react-native-qrcode-svg": "^6.3.21",
+    "react-native-svg": "15.15.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.0",
+    "typescript": "~6.0.3",
+    "vitest": "^4.1.10"
+  }
+}
